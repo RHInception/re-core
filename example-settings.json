@@ -2,6 +2,10 @@
     "DEBUG": true,
     "LOGGER_NAME": "recore",
     "LOGFILE": "recore.log",
-    "MQ": "amqp.example.com",
+    "MQ": {
+        "server": "amqp.example.com",
+        "name": "username",
+        "password": "password"
+    },
     "DB": "mongo.example.com"
 }
