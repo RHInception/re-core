@@ -1,0 +1,6 @@
+{
+    "DEBUG": true,
+    "LOGGER_NAME": "recore",
+    "LOGFILE": "recore.log",
+    "MQ": "amqp.example.com",
+}
