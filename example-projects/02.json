@@ -12,7 +12,8 @@
 		"plugin": "shexec",
 		"parameters": {
 		    "command": "ls -l /"
-		}
+		},
+		"errors": "ignore"
 	    },
 	    {
 		"name": "List my home directory",

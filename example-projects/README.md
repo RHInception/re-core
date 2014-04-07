@@ -16,6 +16,12 @@ in a list together):
 * **Long-list the / directory**
 * **List my home directory**
 
+Take special note of the first step definition. Notice there is a new
+key there now: `errors` and it has the value `ignore`. This means that
+if the first step fails it will not stop the rest of the project steps
+from running.
+
+
 Following the completion of the previous two steps one final step
 happens:
 
