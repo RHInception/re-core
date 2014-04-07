@@ -1,0 +1,16 @@
+{
+    "project": "example project",
+    "ownership": {
+	"id": "Some team",
+        "contact": "someteam@example.com"
+    },
+    "steps": [
+	{
+	    "name": "example step",
+	    "plugin": "shexec",
+	    "parameters": {
+		"command": "ls -l /"
+	    }
+	}
+    ]
+}

@@ -1,0 +1,35 @@
+{
+    "project": "example project with concurrent steps",
+    "ownership": {
+	"id": "Some team",
+        "contact": "someteam@example.com"
+    },
+    "steps": [
+	[
+	    {
+		"name": "Long-list the / directory",
+		"description": "a step that runs concurrently with another step",
+		"plugin": "shexec",
+		"parameters": {
+		    "command": "ls -l /"
+		}
+	    },
+	    {
+		"name": "List my home directory",
+		"description": "Runs concurrent with 'Long-list the / directory'",
+		"plugin": "shexec",
+		"parameters": {
+		    "command": "ls ~"
+		}
+	    }
+	],
+	{
+	    "name": "List the tmp directory",
+	    "description": "Runs AFTER the last two steps completed",
+	    "plugin": "shexec",
+	    "parameters": {
+		"command": "ls /tmp/"
+	    }
+	}
+    ]
+}
