@@ -13,5 +13,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
+import json
+
 def main(args):
-    print args
+    if os.path.exists(args.config):
+        config = json.loads(open(os.path.expanduser(args.config)).read())
+        print json.dumps(config, indent=4)
+    else:
+        print "config doesn't exist"
