@@ -3,4 +3,5 @@
     "LOGGER_NAME": "recore",
     "LOGFILE": "recore.log",
     "MQ": "amqp.example.com",
+    "DB": "mongo.example.com"
 }
