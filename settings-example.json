@@ -5,7 +5,8 @@
     "MQ": {
         "server": "amqp.example.com",
         "name": "username",
-        "password": "password"
+        "password": "password",
+	"exchange": "my_exchange"
     },
     "DB": "mongo.example.com"
 }
