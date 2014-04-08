@@ -17,6 +17,7 @@
 import recore.utils
 import recore.receive
 import logging
+import recore.mongo
 
 def main(args):
     try:
@@ -25,13 +26,27 @@ def main(args):
         print "ERROR config doesn't exist"
         sys.exit(1)
 
-    (channel, connection) = recore.utils.connect_mq(
-        name=config['MQ']['name'],
-        password=config['MQ']['password'],
-        server=config['MQ']['server'],
-        exchange=config['MQ']['exchange'])
+    ##################################################################
+    # Set up the mongodb hotness.
+    db = config['DB']
+    (c, d) = recore.mongo.connect(db['SERVERS'][0],
+                                  db['PORT'],
+                                  db['NAME'],
+                                  db['PASSWORD'],
+                                  db['DATABASE'])
 
-    receive_as = config['MQ']['queue']
+    recore.mongo.connection = c
+    recore.mongo.database = d
+
+    ##################################################################
+    # Gimme dat AMQP bay-bee
+    (channel, connection) = recore.utils.connect_mq(
+        name=config['MQ']['NAME'],
+        password=config['MQ']['PASSWORD'],
+        server=config['MQ']['SERVER'],
+        exchange=config['MQ']['EXCHANGE'])
+
+    receive_as = config['MQ']['QUEUE']
     print "Receiving as component: %s\n" % receive_as
     result = channel.queue_declare(durable=True, queue=receive_as)
     queue_name = result.method.queue

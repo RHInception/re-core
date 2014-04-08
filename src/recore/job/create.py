@@ -23,11 +23,13 @@ it expects a message with {"id": $an_int_here} back to the reply_to.
 """
 
 import recore.utils
+import recore.mongo
 
 def release(ch, project, reply_to):
     """
     `ch` is an open AMQP channel
     `project` is the name of a project to begin a release for.
+    `reply_to` is a temporary channel
 
 When we aren't just doing this for fakesies we'll reference that name
 against the database to retrieve a list of release steps to execute.
@@ -36,12 +38,17 @@ For now we're just going to pretend we did that part.
 
 We then generate a correlation_id. In the future that will be passed
 to the workers. For now we will just return it."""
-    # TODO: Don't generate fake correlation IDs like this. Idea: use
-    # one of the ID parameters in MongoDB.
     import time
 
-    body = {'id': abs(int(hash(time.time())))}
+    mongo_db = recore.mongo.database
+    project_exists = recore.mongo.lookup_project(mongo_db, project)
 
+    if project_exists:
+        id = str(recore.mongo.initialize_state(mongo_db, project))
+    else:
+        id = None
+
+    body = {'id': str(id)}
     ch.basic_publish(exchange='',
                      routing_key=reply_to,
                      body=recore.utils.create_json_str(body))
