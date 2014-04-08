@@ -1,12 +1,19 @@
 {
-    "DEBUG": true,
-    "LOGGER_NAME": "recore",
     "LOGFILE": "recore.log",
     "MQ": {
-        "server": "amqp.example.com",
-        "name": "username",
-        "password": "password",
-	"exchange": "my_exchange"
+        "SERVER": "amqp.example.com",
+        "NAME": "username",
+        "PASSWORD": "password",
+	"EXCHANGE": "my_exchange",
+	"QUEUE": "re"
     },
-    "DB": "mongo.example.com"
+    "DB": {
+	"SERVERS": [
+	    "mongo01.example.com",
+	    "mongo02.example.com"
+	],
+	"DATABASE": "re"
+	"NAME": "lordmongo",
+	"PASSWORD": "webscale"
+    }
 }

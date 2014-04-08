@@ -45,14 +45,13 @@ command-line option.
 | Name     | Type | Parent | Value                                      |
 |----------|------|--------|--------------------------------------------|
 | LOGFILE  | str  | None   | File name for the application level log    |
-| LOGLEVEL | str  | None   | DEBUG, INFO (default), WARN, FATAL         |
 | MQ       | dict | None   | Where all of the MQ connection settings are|
 | SERVER   | str  | MQ     | Hostname or IP of the server               |
 | NAME     | str  | MQ     | Username to connect with                   |
 | PASSWORD | str  | MQ     | Password to authenticate with              |
 | QUEUE    | str  | MQ     | Queue on the server to bind                |
 | DB       | dict | None   | Where all the DB connection settings are   |
-| SERVER   | str  | DB     | Hostname or IP of the MongoDB server       |
+| SERVERS  | list | DB     | List of all of the MongoDB hostname/IPs    |
 | DATABASE | str  | DB     | Name of the MongoDB database               |
 | NAME     | str  | DB     | Username to connect with                   |
 | PASSWORD | str  | DB     | Password to authenticate with              |
@@ -62,8 +61,6 @@ command-line option.
 
 ```json
 {
-    "DEBUG": true,
-    "LOGGER_NAME": "recore",
     "LOGFILE": "recore.log",
     "MQ": {
         "SERVER": "127.0.0.1",
@@ -72,10 +69,13 @@ command-line option.
         "QUEUE": "re"
     },
     "DB": {
-        "SERVER": "mongo.example.com",
+        "SERVERS": [
+            "mongo.example.com",
+            "mongo-failover.example.com"
+        ],
         "DATABASE": "re"
-        "NAME": "inceptadmin",
-        "PASSWORD": "r3dh@t"
+        "NAME": "lord_mongo",
+        "PASSWORD": "websc@l3"
     }
 }
 ```
