@@ -26,20 +26,24 @@ import recore.utils
 import recore.mongo
 
 def release(ch, project, reply_to):
-    """
-    `ch` is an open AMQP channel
+    """`ch` is an open AMQP channel
+
     `project` is the name of a project to begin a release for.
+
     `reply_to` is a temporary channel
 
-When we aren't just doing this for fakesies we'll reference that name
-against the database to retrieve a list of release steps to execute.
+Reference the project name against the database to retrieve a list of
+release steps to execute.
 
 For now we're just going to pretend we did that part.
 
-We then generate a correlation_id. In the future that will be passed
-to the workers. For now we will just return it."""
-    import time
+We then generate a correlation_id by inserting a new document into the
+'state' collection. The correlation_id is equivalent to the
+automatically generated '_id' property of this document.
 
+In the future that ID will be passed to the workers. For now we will
+just return it.
+    """
     mongo_db = recore.mongo.database
     project_exists = recore.mongo.lookup_project(mongo_db, project)
 

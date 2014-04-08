@@ -32,7 +32,9 @@ def connect(host, port, user, password, db):
 
 def lookup_project(d, project):
     """Given a mongodb database, `d`, search the 'projects' collection for
-any documents which match the `project` key provided."""
+any documents which match the `project` key provided. `search_result`
+is either a hash or `None` if no matches were found.
+    """
     projects = d['projects']
     search_result = projects.find_one({'project': project})
     return search_result
@@ -47,6 +49,13 @@ def initialize_state(d, project):
     # Just record the name now and insert an empty array to record the
     # result of steps. Oh, and when it started. Maybe we'll even add
     # who started it later!
+    #
+    # We expect this to return an ObjectID object. We don't care so
+    # much about what we're `insert`ing into the state collection. `d`
+    # would be a Mongo database object, but we can't unittest with a
+    # real one, so we need mock one up, give a string for the project
+    # name, and make sure the insert method returns a mocked ObjectID
+    # which when `str`'d returns a reasonable value.
     state0 = {
         'project': project,
         'step_log': [],
