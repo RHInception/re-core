@@ -41,5 +41,5 @@ setup(
         'Development Status :: 5 - Production/Stable',
         'Programming Language :: Python',
     ],
-    scripts=['bin/re-fsm']
+    scripts=['bin/re-core']
 )
