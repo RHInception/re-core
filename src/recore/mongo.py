@@ -38,7 +38,8 @@ any documents which match the `project` key provided."""
     return search_result
 
 def lookup_state(d, c_id):
-    """`d` is a mongodb database and `c_id` is a correlation ID."""
+    """`d` is a mongodb database and `c_id` is a correlation ID
+corresponding to the ObjectID value in MongoDB."""
     pass
 
 def initialize_state(d, project):
