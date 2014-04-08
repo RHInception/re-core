@@ -14,6 +14,7 @@
 	],
 	"DATABASE": "re",
 	"NAME": "lordmongo",
-	"PASSWORD": "webscale"
+	"PASSWORD": "webscale",
+	"PORT": 27017
     }
 }
