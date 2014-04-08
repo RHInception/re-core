@@ -42,11 +42,11 @@ pep8:
 	@echo "#############################################"
 	@echo "# Running PEP8 Compliance Tests"
 	@echo "#############################################"
-	pep8 --ignore=E501,E121,E124 re-core/
+	pep8 --ignore=E501,E121,E124 src/recore/
 
 pyflakes:
 	@echo "#############################################"
 	@echo "# Running Pyflakes Sanity Tests"
 	@echo "# Note: most import errors may be ignored"
 	@echo "#############################################"
-	-pyflakes re-core
+	-pyflakes src/recore
