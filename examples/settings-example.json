@@ -12,7 +12,7 @@
 	    "mongo01.example.com",
 	    "mongo02.example.com"
 	],
-	"DATABASE": "re"
+	"DATABASE": "re",
 	"NAME": "lordmongo",
 	"PASSWORD": "webscale"
     }

@@ -73,7 +73,7 @@ command-line option.
             "mongo.example.com",
             "mongo-failover.example.com"
         ],
-        "DATABASE": "re"
+        "DATABASE": "re",
         "NAME": "lord_mongo",
         "PASSWORD": "websc@l3"
     }
