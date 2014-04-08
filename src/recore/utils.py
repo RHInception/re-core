@@ -17,6 +17,7 @@
 import os
 import sys
 import json
+import pika
 
 def parse_config_file(path):
     if os.path.exists(path):
@@ -24,23 +25,37 @@ def parse_config_file(path):
     else:
         raise IOError("Path to config file doesn't exist: %s" % path)
 
-def connect_mq(mq_name, mq_password, mq_server, mq_exchange):
+def connect_mq(name=None, password=None, server=None, exchange=None):
     """
     Return channel and connection objects hooked into our message bus
 
-    `mq_name` - Username to connect with
-    `mq_password` - Password to authenticate with
-    `mq_server` - Hostname of the actual message bus
-    `mq_exchange` - Exchange to connect to on the bus
+    `name` - Username to connect with
+    `password` - Password to authenticate with
+    `server` - Hostname of the actual message bus
+    `exchange` - Exchange to connect to on the bus
 
     Returns a 2-tuple of `channel` and `connection` objects
     """
-    creds = pika.credentials.PlainCredentials(mq_name, mq_password)
+    creds = pika.credentials.PlainCredentials(name, password)
     connection = pika.BlockingConnection(pika.ConnectionParameters(
-        host=mq_server,
+        host=str(server),
         credentials=creds))
     channel = connection.channel()
-    channel.exchange_declare(exchange=mq_exchange,
+    channel.exchange_declare(exchange=exchange,
                              durable=True,
                              exchange_type='topic')
     return (channel, connection)
+
+def load_json_str(jstr):
+    """
+    Internalize the json content object (`jstr`) into a native Python
+    datastructure and return it.
+    """
+    return json.loads(str(jstr))
+
+def create_json_str(input_ds, **kwargs):
+    """
+    Load a native Python datastructure into a json formatted string
+    and return it.
+    """
+    return json.dumps(input_ds, **kwargs)
