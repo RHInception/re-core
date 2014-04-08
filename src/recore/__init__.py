@@ -19,16 +19,17 @@ import recore.receive
 import logging
 import recore.mongo
 
-def main(args):
+def parse_config(config_path):
+    """Read in the config file. Or die trying"""
     try:
-        config = recore.utils.parse_config_file(args.config)
+        config = recore.utils.parse_config_file(config_path)
     except IOError:
         print "ERROR config doesn't exist"
         sys.exit(1)
+    return config
 
-    ##################################################################
-    # Set up the mongodb hotness.
-    db = config['DB']
+def init_mongo(db):
+    """Open up a MongoDB connection"""
     (c, d) = recore.mongo.connect(db['SERVERS'][0],
                                   db['PORT'],
                                   db['NAME'],
@@ -38,18 +39,23 @@ def main(args):
     recore.mongo.connection = c
     recore.mongo.database = d
 
-    ##################################################################
-    # Gimme dat AMQP bay-bee
+def init_amqp(mq):
+    """Open a channel to our AMQP server"""
     (channel, connection) = recore.utils.connect_mq(
-        name=config['MQ']['NAME'],
-        password=config['MQ']['PASSWORD'],
-        server=config['MQ']['SERVER'],
-        exchange=config['MQ']['EXCHANGE'])
-
-    receive_as = config['MQ']['QUEUE']
+        name=mq['NAME'],
+        password=mq['PASSWORD'],
+        server=mq['SERVER'],
+        exchange=mq['EXCHANGE'])
+    receive_as = mq['QUEUE']
+    # TODO: Make this use a proper logger system
     print "Receiving as component: %s\n" % receive_as
     result = channel.queue_declare(durable=True, queue=receive_as)
     queue_name = result.method.queue
+    return (channel, connection, queue_name)
+
+def watch_the_queue(channel, connection, queue_name):
+    """Begin consuming messages from the bus. Set our default callback
+handler"""
     channel.basic_consume(recore.receive.receive,
                           queue=queue_name,
                           no_ack=True)
@@ -59,6 +65,12 @@ def main(args):
         channel.close()
         connection.close()
         pass
+
+def main(args):
+    config = parse_config(args.config)
+    init_mongo(config['DB'])
+    (channel, connection, queue_name) = init_amqp(config['MQ'])
+    watch_the_queue(channel, connection, queue_name)
 
 ######################################################################
 # pika spews messages about logging handlers by default. So we're just
