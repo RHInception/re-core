@@ -33,14 +33,13 @@ setup(
         'recore': os.path.join('src', 'recore')
     },
     packages=find_packages('src'),
-    install_requires=[
-        'flask>=0.10',
-    ],
+    # Sorry, but this doesn't work for now :-\
+    # install_requires='pika => 0.9.12',
     classifiers=[
         ('License :: OSI Approved :: GNU Affero General Public '
          'License v3 or later (AGPLv3+)'),
         'Development Status :: 5 - Production/Stable',
         'Programming Language :: Python',
     ],
-
+    scripts=['bin/re-fsm']
 )
