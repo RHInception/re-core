@@ -24,6 +24,10 @@
 
 NAME := re-core
 
+sdist: clean
+	python setup.py sdist
+	rm -fR recore.egg-info
+
 tests: unittests pep8 pyflakes
 	:
 
@@ -36,7 +40,7 @@ unittests:
 clean:
 	@find . -type f -regex ".*\.py[co]$$" -delete
 	@find . -type f \( -name "*~" -or -name "#*" \) -delete
-	@rm -fR build dist rpm-build MANIFEST htmlcov .coverage
+	@rm -fR build dist rpm-build MANIFEST htmlcov .coverage recore.egg-info
 
 pep8:
 	@echo "#############################################"
