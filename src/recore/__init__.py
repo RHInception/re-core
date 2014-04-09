@@ -76,7 +76,7 @@ handler"""
 
 def main(args):
     config = parse_config(args.config)
-    start_logging(config['LOGFILE'], config.get('LOGLEVEL', 'INFO'))
+    start_logging(config.get('LOGFILE', 'recore.log'), config.get('LOGLEVEL', 'INFO'))
     init_mongo(config['DB'])
     (channel, connection, queue_name) = init_amqp(config['MQ'])
     watch_the_queue(channel, connection, queue_name)
