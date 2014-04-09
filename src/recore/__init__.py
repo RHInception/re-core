@@ -20,11 +20,14 @@ import logging
 import recore.mongo
 
 def start_logging(log_file, log_level):
+    output = logging.getLogger('recore')
+    output.setLevel(logging.getLevelName(log_level))
     log_handler = logging.FileHandler(log_file)
     log_handler.setLevel(logging.getLevelName(log_level))
     log_handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(message)s'))
-    logging.debug("initialized logger")
+        '%(asctime)s - %(module)s - %(levelname)s - %(message)s'))
+    output.addHandler(log_handler)
+    output.debug("initialized logger")
     return log_handler
 
 def parse_config(config_path):

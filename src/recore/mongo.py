@@ -18,6 +18,7 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 import urllib
 import datetime
+import logging
 
 connection = None
 database = None
@@ -27,8 +28,12 @@ def connect(host, port, user, password, db):
     (n, p) = escape_credentials(user, password)
     connect_string = "mongodb://%s:%s@%s:%s/%s" % \
                      (n, p, host, port, db)
+    cs_clean = "mongodb://%s:******@%s:%s/%s" % \
+                     (n, host, port, db)
+    out = logging.getLogger('recore')
     connection = MongoClient(connect_string)
     db = connection[db]
+    out.debug("Opened: %s" % cs_clean)
     return (connection, db)
 
 def lookup_project(d, project):
@@ -37,7 +42,12 @@ any documents which match the `project` key provided. `search_result`
 is either a hash or `None` if no matches were found.
     """
     projects = d['projects']
+    out = logging.getLogger('recore')
     search_result = projects.find_one({'project': project})
+    if search_result:
+        out.debug("Found project definition: %s" % project)
+    else:
+        out.debug("No definition for project: %s" % project)
     return search_result
 
 def lookup_state(d, c_id):
@@ -57,27 +67,33 @@ def initialize_state(d, project):
     # real one, so we need mock one up, give a string for the project
     # name, and make sure the insert method returns a mocked ObjectID
     # which when `str`'d returns a reasonable value.
+    out = logging.getLogger('recore')
     state0 = {
         'project': project,
         'step_log': [],
         'created': datetime.datetime.utcnow()
     }
     id = d['state'].insert(state0)
+    out.info("Added new state record with id: %s" % str(id))
     return id
 
 def update_state(d, c_id, state):
     """`d` is a mongodb database, `c_id` is the ObjectID, and state is a
 hash we will push onto the `step_log`."""
+    out = logging.getLogger('recore')
     _id = { '_id': ObjectID(str(c_id)) }
     _update = {
         '$push': {
             'step_log': state
             }
     }
-    d['state'].update(
+    id = d['state'].update(
         _id,
         _update)
-
+    if id:
+        out.info("Added state record to %s" % c_id)
+    else:
+        out.error("Failed to update record with id: %s" % c_id)
 
 
 def escape_credentials(n, p):
