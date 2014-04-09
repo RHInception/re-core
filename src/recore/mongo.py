@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from pymongo import MongoClient
+from bson.objectid import ObjectId
 import urllib
 import datetime
 
@@ -59,15 +60,25 @@ def initialize_state(d, project):
     state0 = {
         'project': project,
         'step_log': [],
-        'started': datetime.datetime.utcnow()
+        'created': datetime.datetime.utcnow()
     }
     id = d['state'].insert(state0)
     return id
 
-def update_state(d, **kwargs):
-    """`d` is a mongodb database and `**kwargs` is undefined at this
-time. sorry"""
-    pass
+def update_state(d, c_id, state):
+    """`d` is a mongodb database, `c_id` is the ObjectID, and state is a
+hash we will push onto the `step_log`."""
+    _id = { '_id': ObjectID(str(c_id)) }
+    _update = {
+        '$push': {
+            'step_log': state
+            }
+    }
+    d['state'].update(
+        _id,
+        _update)
+
+
 
 def escape_credentials(n, p):
     """Return the RFC 2396 escaped version of name `n` and password `p` in

@@ -19,6 +19,14 @@ import recore.receive
 import logging
 import recore.mongo
 
+def start_logging(log_file, log_level):
+    log_handler = logging.FileHandler(log_file)
+    log_handler.setLevel(logging.getLevelName(log_level))
+    log_handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(levelname)s - %(message)s'))
+    logging.debug("initialized logger")
+    return log_handler
+
 def parse_config(config_path):
     """Read in the config file. Or die trying"""
     try:
@@ -68,9 +76,11 @@ handler"""
 
 def main(args):
     config = parse_config(args.config)
+    start_logging(config['LOGFILE'], config.get('LOGLEVEL', 'INFO'))
     init_mongo(config['DB'])
     (channel, connection, queue_name) = init_amqp(config['MQ'])
     watch_the_queue(channel, connection, queue_name)
+
 
 ######################################################################
 # pika spews messages about logging handlers by default. So we're just
