@@ -18,8 +18,10 @@ import recore.utils
 import recore.receive
 import logging
 import recore.mongo
+import sys
 
 def start_logging(log_file, log_level):
+    # First the file logging
     output = logging.getLogger('recore')
     output.setLevel(logging.getLevelName(log_level))
     log_handler = logging.FileHandler(log_file)
@@ -28,12 +30,23 @@ def start_logging(log_file, log_level):
         '%(asctime)s - %(module)s - %(levelname)s - %(message)s'))
     output.addHandler(log_handler)
     output.debug("initialized logger")
-    return log_handler
+
+    # And now the stdout logging
+    out2 = logging.getLogger('recore.stdout')
+    out2.setLevel('DEBUG')
+    lh2 = logging.StreamHandler(stream=sys.stdout)
+    lh2.setFormatter(logging.Formatter(
+        '%(module)s - %(levelname)s - %(message)s'))
+    out2.addHandler(lh2)
+    out2.debug("initialized stdout logger")
 
 def parse_config(config_path):
     """Read in the config file. Or die trying"""
     try:
         config = recore.utils.parse_config_file(config_path)
+        start_logging(config.get('LOGFILE', 'recore.log'), config.get('LOGLEVEL', 'INFO'))
+        out = logging.getLogger('recore.stdout')
+        out.debug('Parsed configuration file')
     except IOError:
         print "ERROR config doesn't exist"
         sys.exit(1)
@@ -57,9 +70,12 @@ def init_amqp(mq):
         password=mq['PASSWORD'],
         server=mq['SERVER'],
         exchange=mq['EXCHANGE'])
+    connect_string = "amqp://%s:******@%s:%s/%s" % \
+                     (mq['NAME'], mq['SERVER'], mq['PORT'], mq['EXCHANGE'])
+    out = logging.getLogger('recore')
+    out.debug("Opened AMQP connection: %s" % connect_string)
+
     receive_as = mq['QUEUE']
-    # TODO: Make this use a proper logger system
-    print "Receiving as component: %s\n" % receive_as
     result = channel.queue_declare(durable=True, queue=receive_as)
     queue_name = result.method.queue
     return (channel, connection, queue_name)
@@ -71,7 +87,11 @@ handler"""
                           queue=queue_name,
                           no_ack=True)
     try:
+        notify = logging.getLogger('recore.stdout')
+        notify.info('FSM online and listening for messages')
         channel.start_consuming()
+        out = logging.getLogger('recore')
+        out.debug('Consuming messages from queue: %s' % queue_name)
     except KeyboardInterrupt:
         channel.close()
         connection.close()
@@ -79,10 +99,11 @@ handler"""
 
 def main(args):
     config = parse_config(args.config)
-    start_logging(config.get('LOGFILE', 'recore.log'), config.get('LOGLEVEL', 'INFO'))
     init_mongo(config['DB'])
     (channel, connection, queue_name) = init_amqp(config['MQ'])
     watch_the_queue(channel, connection, queue_name)
+    out = logging.getLogger('recore.stdout')
+    out.info('FSM fully initialized')
 
 
 ######################################################################
