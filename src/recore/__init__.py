@@ -109,4 +109,4 @@ def main(args):
 ######################################################################
 # pika spews messages about logging handlers by default. So we're just
 # going to set the level to CRITICAL so we don't see most of them.
-logging.getLogger('pika').setLevel(logging.CRITICAL)
+logging.getLogger('pika').setLevel(logging.DEBUG)

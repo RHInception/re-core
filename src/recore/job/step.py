@@ -26,8 +26,10 @@ def run(channel, project, id):
 
     to = {'project': project}
     to_worker = recore.utils.create_json_str(to)
+    print "Created string: %s" % str(to_worker)
 
     channel.basic_publish(exchange='re',
                           routing_key='plugin.shexec.start',
                           properties=props,
                           body=to_worker)
+    out.info("Kicked off jorb")

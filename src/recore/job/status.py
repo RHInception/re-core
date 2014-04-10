@@ -29,14 +29,14 @@ def update(ch, method, properties, message):
     - `properties` - Job response message properties
     - `message` - Datastructure describing the new state
     """
-
+    print "Lets update this status"
     # Of the attributes carried by the properties object we are
     # primarily interested in the following:
     #
     # - `app_id` - Name of the plugin
     # - `correlation_id` - ID of the release this job was ran for
-
     correlation_id = properties.correlation_id
+    print "id: %s" % correlation_id
     message['timestamp'] = dt.utcnow()
     # Not sending 'app_id' while testing
     #message['plugin'] = properties.app_id

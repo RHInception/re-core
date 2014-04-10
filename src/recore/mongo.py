@@ -81,7 +81,8 @@ def update_state(d, c_id, state):
     """`d` is a mongodb database, `c_id` is the ObjectID, and state is a
 hash we will push onto the `step_log`."""
     out = logging.getLogger('recore')
-    _id = { '_id': ObjectID(str(c_id)) }
+    out.debug("updating for id: %s" % c_id)
+    _id = { '_id': ObjectId(str(c_id)) }
     _update = {
         '$push': {
             'step_log': state
