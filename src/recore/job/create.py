@@ -45,8 +45,12 @@ automatically generated '_id' property of this document.
 In the future that ID will be passed to the workers. For now we will
 just return it.
     """
+    out = logging.getLogger('recore.stdout')
+    out.info("new job submitted from rest for %s. Need to look it up first in mongo" % project)
     mongo_db = recore.mongo.database
     project_exists = recore.mongo.lookup_project(mongo_db, project)
+
+    out.info("looked up project: %s" % project)
 
     if project_exists:
         id = str(recore.mongo.initialize_state(mongo_db, project))
@@ -60,3 +64,5 @@ just return it.
     out = logging.getLogger('recore.stdout')
     out.info('Emitted message to start new release for %s. Job id: %s' %
              (project, str(id)))
+
+    return id
