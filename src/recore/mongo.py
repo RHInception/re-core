@@ -71,11 +71,33 @@ def initialize_state(d, project):
     state0 = {
         'project': project,
         'step_log': [],
-        'created': datetime.datetime.utcnow()
+        'created': datetime.datetime.utcnow(),
+        'running': True,
     }
     id = d['state'].insert(state0)
     out.info("Added new state record with id: %s" % str(id))
     return id
+
+
+def mark_release_running(d, c_id, running=True):
+    """`d` is a mongodb database, `c_id` is the ObjectID, and running
+is a boolean noting if the release is running."""
+    out = logging.getLogger('recore')
+    out.debug("updating for id: %s" % c_id)
+    _id = { '_id': ObjectId(str(c_id)) }
+    _update = {
+        '$set': {
+            'running': running,
+         },
+    }
+    id = d['state'].update(
+        _id,
+        _update)
+    if id:
+        out.info("Updated running status to %s" % c_id)
+    else:
+        out.error("Failed to update running status with id: %s" % c_id)
+
 
 def update_state(d, c_id, state):
     """`d` is a mongodb database, `c_id` is the ObjectID, and state is a

@@ -45,3 +45,14 @@ def update(ch, method, properties, message):
     recore.mongo.update_state(recore.mongo.database,
                               correlation_id,
                               message)
+
+
+def running(properties, running):
+    """
+    - `properties` - Job response message properties
+    - `running` - Boolean noting if the release is running
+    """
+    print "Updating the running status"
+    correlation_id = properties.correlation_id
+    print "id: %s" % correlation_id
+    recore.mongo.mark_release_running(recore.mongo.database, correlation_id, running)

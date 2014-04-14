@@ -52,6 +52,19 @@ def receive(ch, method, properties, body):
         print "Got a releaes step update"
         try:
             recore.job.status.update(ch, method, properties, msg)
+            # If the response was fail we need to halt the release
+            if msg['status'] == 'failed':
+                # TODO: use a logger
+                print "Job JOB_NAME_HERE for release ID_HERE failed. Aborting release."
+                # The release is no longer running
+                recore.job.status.running(properties, False)
+            if msg['status'] == 'completed':
+                # TODO: use a logger
+                print "Job JOG_NAME_HERE compleated for release ID_HERE. Executing next step."
+                # if there are no more steps mark running as false
+                #recore.job.status.running(properties, False)
+                # TODO: execute the next step
+                pass
         except Exception, e:
             print e
         print "We finished processing the update"
