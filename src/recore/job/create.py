@@ -45,24 +45,31 @@ automatically generated '_id' property of this document.
 In the future that ID will be passed to the workers. For now we will
 just return it.
     """
-    out = logging.getLogger('recore.stdout')
-    out.info("new job submitted from rest for %s. Need to look it up first in mongo" % project)
+    out = logging.getLogger('recore')
+    notify = logging.getLogger('recore.stdout')
+    out.info("Checking mongo for info on project %s" % project)
+    notify.info("new job submitted from rest for %s. Need to look it up first in mongo" % project)
     mongo_db = recore.mongo.database
     project_exists = recore.mongo.lookup_project(mongo_db, project)
 
-    out.info("looked up project: %s" % project)
+    out.debug("Mongo query to get info on %s finished" % project)
+    notify.info("looked up project: %s" % project)
 
     if project_exists:
         id = str(recore.mongo.initialize_state(mongo_db, project))
+        out.info("Project %s exists in mongo with id %s" % (project, id))
     else:
+        out.info("Project %s does not exists in mongo" % project)
         id = None
 
-    body = {'id': str(id)}
+    body = recore.utils.create_json_str({'id': str(id)})
+    out.debug("Sending to routing key %s: %s" % (reply_to, body))
     ch.basic_publish(exchange='',
                      routing_key=reply_to,
-                     body=recore.utils.create_json_str(body))
-    out = logging.getLogger('recore.stdout')
-    out.info('Emitted message to start new release for %s. Job id: %s' %
+                     body=body)
+    out.info("Emitted message to start new release for %s. Job id: %s" %
+             (project, str(id)))
+    notify.info("Emitted message to start new release for %s. Job id: %s" %
              (project, str(id)))
 
     return id

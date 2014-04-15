@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import pdb
+import logging
 import recore.utils
 import recore.job.create
 import recore.job.step
@@ -24,10 +24,14 @@ def receive(ch, method, properties, body):
     # print "devops Topic: %s\nMessage: %s\n" % (method.routing_key, body,)
     #ch.basic_ack(properties.delivery_tag)
     # print "acked it"
+    out = logging.getLogger('recore')
+    notify = logging.getLogger('recore.stdout')
     msg = recore.utils.load_json_str(body)
     # print "message plz: %s" % msg
     topic = method.routing_key
+    out.info('Received a new message via routing key %s' % topic)
     # print "routed: %s" % str(topic)
+    out.debug("Message: %s" % msg)
     ##################################################################
     # NEW JOB
     #
@@ -40,40 +44,51 @@ def receive(ch, method, properties, body):
     ##################################################################
     if topic == 'job.create':
         # We need to get the name of the temporary queue to respond back on.
-        print "new job create"
+        notify.info("new job create")
         reply_to = properties.reply_to
         # print "reply to happened? %s" % reply_to
+        out.info("New job requested, starting release process for %s ..." % (
+            msg["project"]))
         id = recore.job.create.release(ch, msg['project'], reply_to)
         # print "got that id"
         recore.job.step.run(ch, msg['project'], id)
-        print "foo"
     elif topic == 'release.step':
         # Handles updates from the workers running jobs
-        print "Got a releaes step update"
+        notify.info("Got a releaes step update")
         try:
+            out.info("Updating release status...")
             recore.job.status.update(ch, method, properties, msg)
+            app_id = properties.correlation_id
+            correlation_id = properties.correlation_id
             # If the response was fail we need to halt the release
             if msg['status'] == 'failed':
-                # TODO: use a logger
-                print "Job JOB_NAME_HERE for release ID_HERE failed. Aborting release."
+                out.error("Job %s for release %s failed. Aborting release." % (
+                    app_id, correlation_id))
+                notify.info("Job %s for release %s failed. Aborting release." % (
+                    app_id, correlation_id))
                 # The release is no longer running
                 recore.job.status.running(properties, False)
             if msg['status'] == 'completed':
-                # TODO: use a logger
-                print "Job JOG_NAME_HERE compleated for release ID_HERE. Executing next step."
+                out.error("Job JOB_NAME_HERE for release %s failed. Aborting release." % (
+                    app_id, correlation_id))
+                notify.info("Job %s for release %s failed. Aborting release." % (
+                    app_id, correlation_id))
                 # if there are no more steps mark running as false
                 #recore.job.status.running(properties, False)
                 # TODO: execute the next step
                 pass
         except Exception, e:
-            print e
-        print "We finished processing the update"
+            notify.info(str(e))
+            out.error("Error occured: %s" % e)
+        out.info("Release step finished")
+        notify.info("We finished processing the update")
     else:
-        print "IDK what this is"
+        out.warn("Unknown routing key %s. Doing nothing ...")
+        notify.info("IDK what this is: %s" % topic)
         # TODO: This is a glorified case/switch statement. There needs
         # to be a better way to map topics to functions. Consider
         # refactoring (later, lol) to a Python module-tree that
         # mimicks the topic hierarchy. Then just pass some
         # intelligently named function everything we know?
-        print topic
-    print "end receive() routine"
+    notify.info("end receive() routine")
+    out.debug("end receive() routine")

@@ -21,15 +21,19 @@ import recore.utils
 def run(channel, project, id):
     props = pika.spec.BasicProperties()
     props.correlation_id = id
-    out = logging.getLogger('recore.stdout')
-    out.info('About to kick off a worker task: <id>%s' % id)
+    out = logging.getLogger('recore')
+    notify = logging.getLogger('recore.stdout')
+    notify.info('About to kick off a worker task: <id>%s' % id)
 
-    to = {'project': project}
-    to_worker = recore.utils.create_json_str(to)
-    print "Created string: %s" % str(to_worker)
-
+    routing_key = 'plugin.shexec.start'
+    to_worker = recore.utils.create_json_str({'project': project})
+    notify.info("Created string: %s" % to_worker)
+    out.debug("Sending message for project %s and correlation if % to routing key %s: %s" % (
+        project, id, routing_key, to_worker))
     channel.basic_publish(exchange='re',
-                          routing_key='plugin.shexec.start',
+                          routing_key=routing_key,
                           properties=props,
                           body=to_worker)
-    out.info("Kicked off jorb")
+    notify.info("Kicked off jorb")
+    out.info("Kicked off job %s for project %s with correlation id %s" % (
+        routing_key, project, correlation_id))

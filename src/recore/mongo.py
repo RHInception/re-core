@@ -34,6 +34,7 @@ def connect(host, port, user, password, db):
     connection = MongoClient(connect_string)
     db = connection[db]
     out.debug("Opened: %s" % cs_clean)
+    out.info("Connection to the database succeeded")
     return (connection, db)
 
 def lookup_project(d, project):
@@ -76,6 +77,7 @@ def initialize_state(d, project):
     }
     id = d['state'].insert(state0)
     out.info("Added new state record with id: %s" % str(id))
+    out.debug("New state record: %s" % state0)
     return id
 
 

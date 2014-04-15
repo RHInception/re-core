@@ -18,6 +18,7 @@
 Update job status
 """
 
+import logging
 import recore.mongo
 import recore.utils
 from datetime import datetime as dt
@@ -29,19 +30,25 @@ def update(ch, method, properties, message):
     - `properties` - Job response message properties
     - `message` - Datastructure describing the new state
     """
-    print "Lets update this status"
+    out = logging.getLogger('recore')
+    notify = logging.getLogger('recore.stdout')
+    notify.info("Lets update this status")
     # Of the attributes carried by the properties object we are
     # primarily interested in the following:
     #
     # - `app_id` - Name of the plugin
     # - `correlation_id` - ID of the release this job was ran for
     correlation_id = properties.correlation_id
-    print "id: %s" % correlation_id
+    out.info("Updating mongodb with latest message for correlation id %s" % (
+        correlation_id))
+    notify.info("id: %s" % correlation_id)
     message['timestamp'] = dt.utcnow()
     # Not sending 'app_id' while testing
     #message['plugin'] = properties.app_id
     message['plugin'] = 'shexec'
 
+    out.debug("Storing the following in mongodb for correlation %s: %s" % (
+        correlation_id, message))
     recore.mongo.update_state(recore.mongo.database,
                               correlation_id,
                               message)
@@ -52,7 +59,12 @@ def running(properties, running):
     - `properties` - Job response message properties
     - `running` - Boolean noting if the release is running
     """
-    print "Updating the running status"
+    out = logging.getLogger('recore')
+    notify = logging.getLogger('recore.stdout')
+
     correlation_id = properties.correlation_id
-    print "id: %s" % correlation_id
+    notify.info("Updating the running status for correlation if %s" % (
+        correlation_id))
+    out.info("Setting release running status for correlation id %s to %s" % (
+        correlation_id, running))
     recore.mongo.mark_release_running(recore.mongo.database, correlation_id, running)
