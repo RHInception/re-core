@@ -33,7 +33,7 @@ setup(
         'recore': os.path.join('src', 'recore')
     },
     packages=find_packages('src'),
-    # Sorry, but this doesn't work for now :-\
+    # Sorry, but this doesn't work for now
     # install_requires='pika => 0.9.12',
     classifiers=[
         ('License :: OSI Approved :: GNU Affero General Public '

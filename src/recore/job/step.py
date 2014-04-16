@@ -18,6 +18,7 @@ import pika.spec
 import logging
 import recore.utils
 
+
 def run(channel, project, id):
     props = pika.spec.BasicProperties()
     props.correlation_id = id
@@ -28,8 +29,9 @@ def run(channel, project, id):
     routing_key = 'plugin.shexec.start'
     to_worker = recore.utils.create_json_str({'project': project})
     notify.info("Created string: %s" % to_worker)
-    out.debug("Sending message for project %s and correlation if % to routing key %s: %s" % (
-        project, id, routing_key, to_worker))
+    out.debug(
+        "Sending message for project %s and correlation if %s "
+        "to routing key %s: %s" % project, id, routing_key, to_worker)
     try:
         channel.basic_publish(
             exchange='re',

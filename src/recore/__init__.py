@@ -20,6 +20,7 @@ import logging
 import recore.mongo
 import sys
 
+
 def start_logging(log_file, log_level):
     # First the file logging
     output = logging.getLogger('recore')
@@ -40,11 +41,13 @@ def start_logging(log_file, log_level):
     out2.addHandler(lh2)
     out2.debug("initialized stdout logger")
 
+
 def parse_config(config_path):
     """Read in the config file. Or die trying"""
     try:
         config = recore.utils.parse_config_file(config_path)
-        start_logging(config.get('LOGFILE', 'recore.log'), config.get('LOGLEVEL', 'INFO'))
+        start_logging(config.get(
+            'LOGFILE', 'recore.log'), config.get('LOGLEVEL', 'INFO'))
         notify = logging.getLogger('recore.stdout')
         notify.debug('Parsed configuration file')
     except IOError:
@@ -54,6 +57,7 @@ def parse_config(config_path):
         print "ERROR config file is not valid json: %s" % vex
         raise SystemExit(1)
     return config
+
 
 def init_mongo(db):
     """Open up a MongoDB connection"""
@@ -66,7 +70,6 @@ def init_mongo(db):
     recore.mongo.connection = c
     recore.mongo.database = d
 
- 
 
 def init_amqp(mq):
     """Open a channel to our AMQP server"""
@@ -80,8 +83,8 @@ def init_amqp(mq):
         password=mq['PASSWORD'],
         server=mq['SERVER'],
         exchange=mq['EXCHANGE'])
-    connect_string = "amqp://%s:******@%s:%s/%s" % \
-                 (mq['NAME'], mq['SERVER'], mq['PORT'], mq['EXCHANGE'])
+    connect_string = "amqp://%s:******@%s:%s/%s" % (
+        mq['NAME'], mq['SERVER'], mq['PORT'], mq['EXCHANGE'])
     out.debug("Opened AMQP connection: %s" % connect_string)
 
     receive_as = mq['QUEUE']
@@ -106,6 +109,7 @@ handler"""
         channel.close()
         connection.close()
         pass
+
 
 def main(args):
     import pymongo.errors

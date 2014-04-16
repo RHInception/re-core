@@ -20,11 +20,13 @@ import sys
 import json
 import pika
 
+
 def parse_config_file(path):
     if os.path.exists(path):
         return json.loads(open(os.path.expanduser(path)).read())
     else:
         raise IOError("Path to config file doesn't exist: %s" % path)
+
 
 def connect_mq(name=None, password=None, server=None, exchange=None):
     """
@@ -51,12 +53,14 @@ def connect_mq(name=None, password=None, server=None, exchange=None):
     out.debug("Exchange declared.")
     return (channel, connection)
 
+
 def load_json_str(jstr):
     """
     Internalize the json content object (`jstr`) into a native Python
     datastructure and return it.
     """
     return json.loads(str(jstr))
+
 
 def create_json_str(input_ds, **kwargs):
     """

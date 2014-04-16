@@ -20,17 +20,13 @@ import recore.job.create
 import recore.job.step
 import recore.job.status
 
+
 def receive(ch, method, properties, body):
-    # print "devops Topic: %s\nMessage: %s\n" % (method.routing_key, body,)
-    #ch.basic_ack(properties.delivery_tag)
-    # print "acked it"
     out = logging.getLogger('recore')
     notify = logging.getLogger('recore.stdout')
     msg = recore.utils.load_json_str(body)
-    # print "message plz: %s" % msg
     topic = method.routing_key
     out.info('Received a new message via routing key %s' % topic)
-    # print "routed: %s" % str(topic)
     out.debug("Message: %s" % msg)
     ##################################################################
     # NEW JOB
@@ -44,12 +40,14 @@ def receive(ch, method, properties, body):
     ##################################################################
     if topic == 'job.create':
         try:
-            # We need to get the name of the temporary queue to respond back on.
+            # We need to get the name of the temporary
+            # queue to respond back on.
             notify.info("new job create")
             reply_to = properties.reply_to
             # print "reply to happened? %s" % reply_to
-            out.info("New job requested, starting release process for %s ..." % (
-                msg["project"]))
+            out.info(
+                "New job requested, starting release "
+                "process for %s ..." % msg["project"])
             id = recore.job.create.release(ch, msg['project'], reply_to)
             # print "got that id"
             recore.job.step.run(ch, msg['project'], id)
@@ -68,17 +66,20 @@ def receive(ch, method, properties, body):
             if msg['status'] == 'failed':
                 out.error("Job %s for release %s failed. Aborting release." % (
                     app_id, correlation_id))
-                notify.info("Job %s for release %s failed. Aborting release." % (
-                    app_id, correlation_id))
+                notify.info(
+                    "Job %s for release %s failed. Aborting release." % (
+                        app_id, correlation_id))
                 # The release is no longer running
                 recore.job.status.running(properties, False)
             if msg['status'] == 'completed':
-                out.error("Job JOB_NAME_HERE for release %s failed. Aborting release." % (
-                    app_id, correlation_id))
-                notify.info("Job %s for release %s failed. Aborting release." % (
-                    app_id, correlation_id))
+                out.error(
+                    "Job JOB_NAME_HERE for release %s failed. "
+                    "Aborting release." % app_id, correlation_id)
+                notify.info(
+                    "Job %s for release %s failed. Aborting release." % (
+                        app_id, correlation_id))
                 # if there are no more steps mark running as false
-                #recore.job.status.running(properties, False)
+                # recore.job.status.running(properties, False)
                 # TODO: execute the next step
                 pass
         except KeyError, ke:

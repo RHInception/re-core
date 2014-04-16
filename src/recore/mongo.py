@@ -24,19 +24,21 @@ import logging
 connection = None
 database = None
 
+
 def connect(host, port, user, password, db):
     # First, escape the parameters
     (n, p) = escape_credentials(user, password)
-    connect_string = "mongodb://%s:%s@%s:%s/%s" % \
-                     (n, p, host, port, db)
-    cs_clean = "mongodb://%s:******@%s:%s/%s" % \
-                     (n, host, port, db)
+    connect_string = "mongodb://%s:%s@%s:%s/%s" % (
+        n, p, host, port, db)
+    cs_clean = "mongodb://%s:******@%s:%s/%s" % (
+        n, host, port, db)
     out = logging.getLogger('recore')
     connection = MongoClient(connect_string)
     db = connection[db]
     out.debug("Opened: %s" % cs_clean)
     out.info("Connection to the database succeeded")
     return (connection, db)
+
 
 def lookup_project(d, project):
     """Given a mongodb database, `d`, search the 'projects' collection for
@@ -58,10 +60,12 @@ is either a hash or `None` if no matches were found.
             "Returning {}" % kex)
         return {}
 
+
 def lookup_state(d, c_id):
     """`d` is a mongodb database and `c_id` is a correlation ID
 corresponding to the ObjectID value in MongoDB."""
     pass
+
 
 def initialize_state(d, project):
     """Initialize the state of a given project release"""
@@ -99,11 +103,11 @@ def mark_release_running(d, c_id, running=True):
 is a boolean noting if the release is running."""
     out = logging.getLogger('recore')
     out.debug("updating for id: %s" % c_id)
-    _id = { '_id': ObjectId(str(c_id)) }
+    _id = {'_id': ObjectId(str(c_id))}
     _update = {
         '$set': {
             'running': running,
-         },
+        },
     }
     try:
         id = d['state'].update(_id, _update)
@@ -123,11 +127,11 @@ def update_state(d, c_id, state):
 hash we will push onto the `step_log`."""
     out = logging.getLogger('recore')
     out.debug("updating for id: %s" % c_id)
-    _id = { '_id': ObjectId(str(c_id)) }
+    _id = {'_id': ObjectId(str(c_id))}
     _update = {
         '$push': {
             'step_log': state
-            }
+        }
     }
     try:
         id = d['state'].update(_id, _update)
@@ -140,7 +144,6 @@ hash we will push onto the `step_log`."""
             "Unable to update state with %s. "
             "Propagating PyMongo error: %s" % (_update, pmex))
         raise pmex
-
 
 
 def escape_credentials(n, p):

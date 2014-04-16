@@ -17,7 +17,8 @@
 """
 This is where we create new jobs
 
-FSM will get {"project": "$NAME"} with the topic of job.create and a reply_to set
+FSM will get {"project": "$NAME"} with the topic of job.create and
+a reply_to set
 
 it expects a message with {"id": $an_int_here} back to the reply_to.
 """
@@ -25,6 +26,7 @@ it expects a message with {"id": $an_int_here} back to the reply_to.
 import recore.utils
 import recore.mongo
 import logging
+
 
 def release(ch, project, reply_to):
     """`ch` is an open AMQP channel
@@ -48,7 +50,9 @@ just return it.
     out = logging.getLogger('recore')
     notify = logging.getLogger('recore.stdout')
     out.info("Checking mongo for info on project %s" % project)
-    notify.info("new job submitted from rest for %s. Need to look it up first in mongo" % project)
+    notify.info(
+        "new job submitted from rest for %s. Need to look it up "
+        "first in mongo" % project)
     mongo_db = recore.mongo.database
     project_exists = recore.mongo.lookup_project(mongo_db, project)
 
@@ -67,9 +71,9 @@ just return it.
     ch.basic_publish(exchange='',
                      routing_key=reply_to,
                      body=body)
-    out.info("Emitted message to start new release for %s. Job id: %s" %
-             (project, str(id)))
-    notify.info("Emitted message to start new release for %s. Job id: %s" %
-             (project, str(id)))
+    out.info("Emitted message to start new release for %s. Job id: %s" % (
+        project, str(id)))
+    notify.info("Emitted message to start new release for %s. Job id: %s" % (
+        project, str(id)))
 
     return id

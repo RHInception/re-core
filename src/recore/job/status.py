@@ -23,6 +23,7 @@ import recore.mongo
 import recore.utils
 from datetime import datetime as dt
 
+
 def update(ch, method, properties, message):
     """
     - `ch` - An open channel object
@@ -44,7 +45,7 @@ def update(ch, method, properties, message):
     notify.info("id: %s" % correlation_id)
     message['timestamp'] = dt.utcnow()
     # Not sending 'app_id' while testing
-    #message['plugin'] = properties.app_id
+    # message['plugin'] = properties.app_id
     message['plugin'] = 'shexec'
 
     out.debug("Storing the following in mongodb for correlation %s: %s" % (
@@ -67,4 +68,5 @@ def running(properties, running):
         correlation_id))
     out.info("Setting release running status for correlation id %s to %s" % (
         correlation_id, running))
-    recore.mongo.mark_release_running(recore.mongo.database, correlation_id, running)
+    recore.mongo.mark_release_running(
+        recore.mongo.database, correlation_id, running)
