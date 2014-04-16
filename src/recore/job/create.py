@@ -66,7 +66,7 @@ just return it.
         out.info("Project %s does not exists in mongo" % project)
         id = None
 
-    body = recore.utils.create_json_str({'id': str(id)})
+    body = recore.utils.create_json_str({'id': id})
     out.debug("Sending to routing key %s: %s" % (reply_to, body))
     ch.basic_publish(exchange='',
                      routing_key=reply_to,
