@@ -43,15 +43,19 @@ def receive(ch, method, properties, body):
     # property of the new document created in the 'state' collection.
     ##################################################################
     if topic == 'job.create':
-        # We need to get the name of the temporary queue to respond back on.
-        notify.info("new job create")
-        reply_to = properties.reply_to
-        # print "reply to happened? %s" % reply_to
-        out.info("New job requested, starting release process for %s ..." % (
-            msg["project"]))
-        id = recore.job.create.release(ch, msg['project'], reply_to)
-        # print "got that id"
-        recore.job.step.run(ch, msg['project'], id)
+        try:
+            # We need to get the name of the temporary queue to respond back on.
+            notify.info("new job create")
+            reply_to = properties.reply_to
+            # print "reply to happened? %s" % reply_to
+            out.info("New job requested, starting release process for %s ..." % (
+                msg["project"]))
+            id = recore.job.create.release(ch, msg['project'], reply_to)
+            # print "got that id"
+            recore.job.step.run(ch, msg['project'], id)
+        except KeyError, ke:
+            notify.info("Missing an expected key in message: %s" % ke)
+            out.error("Missing an expected key in message: %s" % ke)
     elif topic == 'release.step':
         # Handles updates from the workers running jobs
         notify.info("Got a releaes step update")
@@ -77,9 +81,9 @@ def receive(ch, method, properties, body):
                 #recore.job.status.running(properties, False)
                 # TODO: execute the next step
                 pass
-        except Exception, e:
-            notify.info(str(e))
-            out.error("Error occured: %s" % e)
+        except KeyError, ke:
+            notify.info("Missing an expected key in message: %s" % ke)
+            out.error("Missing an expected key in message: %s" % ke)
         out.info("Release step finished")
         notify.info("We finished processing the update")
     else:

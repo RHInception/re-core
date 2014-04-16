@@ -45,40 +45,50 @@ def parse_config(config_path):
     try:
         config = recore.utils.parse_config_file(config_path)
         start_logging(config.get('LOGFILE', 'recore.log'), config.get('LOGLEVEL', 'INFO'))
-        out = logging.getLogger('recore.stdout')
-        out.debug('Parsed configuration file')
+        notify = logging.getLogger('recore.stdout')
+        notify.debug('Parsed configuration file')
     except IOError:
         print "ERROR config doesn't exist"
-        sys.exit(1)
+        raise SystemExit(1)
+    except ValueError, vex:
+        print "ERROR config file is not valid json: %s" % vex
+        raise SystemExit(1)
     return config
 
 def init_mongo(db):
     """Open up a MongoDB connection"""
-    (c, d) = recore.mongo.connect(db['SERVERS'][0],
-                                  db['PORT'],
-                                  db['NAME'],
-                                  db['PASSWORD'],
-                                  db['DATABASE'])
-
+    (c, d) = recore.mongo.connect(
+        db['SERVERS'][0],
+        db['PORT'],
+        db['NAME'],
+        db['PASSWORD'],
+        db['DATABASE'])
     recore.mongo.connection = c
     recore.mongo.database = d
 
+ 
+
 def init_amqp(mq):
     """Open a channel to our AMQP server"""
+    import pika.exceptions
+
+    out = logging.getLogger('recore')
+    notify = logging.getLogger('recore.stdout')
+
     (channel, connection) = recore.utils.connect_mq(
         name=mq['NAME'],
         password=mq['PASSWORD'],
         server=mq['SERVER'],
         exchange=mq['EXCHANGE'])
     connect_string = "amqp://%s:******@%s:%s/%s" % \
-                     (mq['NAME'], mq['SERVER'], mq['PORT'], mq['EXCHANGE'])
-    out = logging.getLogger('recore')
+                 (mq['NAME'], mq['SERVER'], mq['PORT'], mq['EXCHANGE'])
     out.debug("Opened AMQP connection: %s" % connect_string)
 
     receive_as = mq['QUEUE']
     result = channel.queue_declare(durable=True, queue=receive_as)
     queue_name = result.method.queue
     return (channel, connection, queue_name)
+
 
 def watch_the_queue(channel, connection, queue_name):
     """Begin consuming messages from the bus. Set our default callback
@@ -98,13 +108,50 @@ handler"""
         pass
 
 def main(args):
-    config = parse_config(args.config)
-    init_mongo(config['DB'])
-    (channel, connection, queue_name) = init_amqp(config['MQ'])
-    watch_the_queue(channel, connection, queue_name)
-    out = logging.getLogger('recore.stdout')
-    out.info('FSM fully initialized')
+    import pymongo.errors
 
+    config = parse_config(args.config)
+
+    out = logging.getLogger('recore')
+    notify = logging.getLogger('recore.stdout')
+    try:
+        init_mongo(config['DB'])
+    except pymongo.errors.ConnectionFailure, cfe:
+        out.fatal("Connection failiure to Mongo: %s. Exiting ..." % cfe)
+        notify.fatal("Connection failiure to Mongo: %s. Exiting ..." % cfe)
+        raise SystemExit(1)
+    except pymongo.errors.PyMongoError:
+        out.fatal("Unknown failiure with Mongo: %s. Exiting ..." % cfe)
+        notify.fatal("Unknown failiure with Mongo: %s. Exiting ..." % cfe)
+        raise SystemExit(1)
+
+    try:
+        (channel, connection, queue_name) = init_amqp(config['MQ'])
+    except KeyError, ke:
+        out.fatal("Missing a required key in MQ config: %s" % ke)
+        notify.fatal("Missing a required key in MQ config: %s" % ke)
+        raise SystemExit(1)
+    except pika.exceptions.ProbableAuthenticationError, paex:
+        out.fatal("Authentication issue connecting to AMQP: %s" % paex)
+        notify.fatal("Authentication issue connecting to AMQP: %s" % paex)
+        raise SystemExit(1)
+    except (
+            pika.exceptions.ProtocolSyntaxError,
+            pika.exceptions.AMQPError), ex:
+        out.fatal("Unknown issue connecting to AMQP: %s" % ex)
+        notify.fatal("Unknown issue connecting to AMQP: %s" % ex)
+        raise SystemExit(1)
+    try:
+        watch_the_queue(channel, connection, queue_name)
+    except (
+            pika.exceptions.ProtocolSyntaxError,
+            pika.exceptions.AMQPError), ex:
+        out.fatal("Unknown issue watching the queue: %s" % ex)
+        notify.fatal("Unknown issue watching the queue: %s" % ex)
+        raise SystemExit(1)
+
+    out.info('FSM fully initialized')
+    notify.info('FSM fully initialized')
 
 ######################################################################
 # pika spews messages about logging handlers by default. So we're just

@@ -16,6 +16,7 @@
 
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+import pymongo.errors
 import urllib
 import datetime
 import logging
@@ -42,14 +43,20 @@ def lookup_project(d, project):
 any documents which match the `project` key provided. `search_result`
 is either a hash or `None` if no matches were found.
     """
-    projects = d['projects']
-    out = logging.getLogger('recore')
-    search_result = projects.find_one({'project': project})
-    if search_result:
-        out.debug("Found project definition: %s" % project)
-    else:
-        out.debug("No definition for project: %s" % project)
-    return search_result
+    try:
+        projects = d['projects']
+        out = logging.getLogger('recore')
+        search_result = projects.find_one({'project': project})
+        if search_result:
+            out.debug("Found project definition: %s" % project)
+        else:
+            out.debug("No definition for project: %s" % project)
+        return search_result
+    except KeyError, kex:
+        out.error(
+            "KeyError raised while trying to look up a project: %s."
+            "Returning {}" % kex)
+        return {}
 
 def lookup_state(d, c_id):
     """`d` is a mongodb database and `c_id` is a correlation ID
@@ -75,9 +82,15 @@ def initialize_state(d, project):
         'created': datetime.datetime.utcnow(),
         'running': True,
     }
-    id = d['state'].insert(state0)
-    out.info("Added new state record with id: %s" % str(id))
-    out.debug("New state record: %s" % state0)
+    try:
+        id = d['state'].insert(state0)
+        out.info("Added new state record with id: %s" % str(id))
+        out.debug("New state record: %s" % state0)
+    except pymongo.errors.PyMongoError, pmex:
+        out.error(
+            "Unable to save new state record %s. "
+            "Propagating PyMongo error: %s" % (state0, pmex))
+        raise pmex
     return id
 
 
@@ -92,13 +105,17 @@ is a boolean noting if the release is running."""
             'running': running,
          },
     }
-    id = d['state'].update(
-        _id,
-        _update)
-    if id:
-        out.info("Updated running status to %s" % c_id)
-    else:
-        out.error("Failed to update running status with id: %s" % c_id)
+    try:
+        id = d['state'].update(_id, _update)
+        if id:
+            out.info("Updated running status to %s" % c_id)
+        else:
+            out.error("Failed to update running status with id: %s" % c_id)
+    except pymongo.errors.PyMongoError, pmex:
+        out.error(
+            "Unable to update release running state with %s. "
+            "Propagating PyMongo error: %s" % (_update, pmex))
+        raise pmex
 
 
 def update_state(d, c_id, state):
@@ -112,13 +129,18 @@ hash we will push onto the `step_log`."""
             'step_log': state
             }
     }
-    id = d['state'].update(
-        _id,
-        _update)
-    if id:
-        out.info("Added state record to %s" % c_id)
-    else:
-        out.error("Failed to update record with id: %s" % c_id)
+    try:
+        id = d['state'].update(_id, _update)
+        if id:
+            out.info("Added state record to %s" % c_id)
+        else:
+            out.error("Failed to update record with id: %s" % c_id)
+    except pymongo.errors.PyMongoError, pmex:
+        out.error(
+            "Unable to update state with %s. "
+            "Propagating PyMongo error: %s" % (_update, pmex))
+        raise pmex
+
 
 
 def escape_credentials(n, p):

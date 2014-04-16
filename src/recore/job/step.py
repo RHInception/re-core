@@ -30,10 +30,18 @@ def run(channel, project, id):
     notify.info("Created string: %s" % to_worker)
     out.debug("Sending message for project %s and correlation if % to routing key %s: %s" % (
         project, id, routing_key, to_worker))
-    channel.basic_publish(exchange='re',
-                          routing_key=routing_key,
-                          properties=props,
-                          body=to_worker)
-    notify.info("Kicked off jorb")
-    out.info("Kicked off job %s for project %s with correlation id %s" % (
-        routing_key, project, correlation_id))
+    try:
+        channel.basic_publish(
+            exchange='re',
+            routing_key=routing_key,
+            properties=props,
+            body=to_worker)
+        notify.info("Kicked off jorb")
+        out.info("Kicked off job %s for project %s with correlation id %s" % (
+            routing_key, project, correlation_id))
+    except pikaa.exceptions.ChannelError, ce:
+        out.error(
+            "Unable to send message to start job: %s ... "
+            "due to channel issue. Propagating Pika error: %s" % (
+                to_worker, ce))
+        raise ce
