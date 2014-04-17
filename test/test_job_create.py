@@ -24,10 +24,12 @@ create.recore.mongo = mock.MagicMock(create.recore.mongo)
 channel = mock.MagicMock()
 
 
-
 class TestJobCreate(TestCase):
 
     def tearDown(self):
+        """
+        Reset mocks.
+        """
         create.recore.mongo.reset_mock()
         channel.reset_mock()
 

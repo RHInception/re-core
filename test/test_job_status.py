@@ -31,9 +31,12 @@ channel = mock.MagicMock()
 
 
 
-class TestJobCreate(TestCase):
+class TestJobStatus(TestCase):
 
     def tearDown(self):
+        """
+        Reset mocks.
+        """
         status.recore.mongo.reset_mock()
         status.dt.utcnow.reset_mock()
         channel.reset_mock()

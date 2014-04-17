@@ -25,10 +25,12 @@ PROPERTIES = pika.spec.BasicProperties(correlation_id=12345)
 channel = mock.MagicMock()
 
 
-
-class TestJobCreate(TestCase):
+class TestJobStep(TestCase):
 
     def tearDown(self):
+        """
+        Reset mocks.
+        """
         channel.reset_mock()
 
     def test_step(self):

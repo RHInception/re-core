@@ -34,6 +34,9 @@ utils.pika.BlockingConnection = mock.MagicMock(
 class TestUtils(TestCase):
 
     def tearDown(self):
+        """
+        Reset mocks.
+        """
         utils.pika.BlockingConnection.reset_mock()
         channel.reset_mock()
 
