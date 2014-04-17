@@ -45,9 +45,9 @@ def lookup_project(d, project):
 any documents which match the `project` key provided. `search_result`
 is either a hash or `None` if no matches were found.
     """
+    out = logging.getLogger('recore')
     try:
         projects = d['projects']
-        out = logging.getLogger('recore')
         search_result = projects.find_one({'project': project})
         if search_result:
             out.debug("Found project definition: %s" % project)
