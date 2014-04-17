@@ -22,9 +22,9 @@ import pika
 
 
 def parse_config_file(path):
-    if os.path.exists(path):
+    try:
         return json.loads(open(os.path.expanduser(path)).read())
-    else:
+    except IOError:
         raise IOError("Path to config file doesn't exist: %s" % path)
 
 
@@ -67,4 +67,6 @@ def create_json_str(input_ds, **kwargs):
     Load a native Python datastructure into a json formatted string
     and return it.
     """
+    if type(input_ds) not in (dict, list):
+        raise ValueError('create_json_str will only work with a dict or list')
     return json.dumps(input_ds, **kwargs)
