@@ -2,8 +2,8 @@ RELEASE ENGINE CORE
 -------------------
 
 This is the **core** component of the Inception Release Engine. The
-core is essentially a finite state machine hooked into a message bus
-and a database.
+core is essentially a finite state machine (**FSM**) hooked into a
+message bus and a database.
 
 The core oversees the execution of all *release steps* for any given
 project. The core is separate from the actual execution of each
@@ -29,7 +29,7 @@ RUNNING FROM SOURCE
 
 ````bash
 $ . ./hacking/setup-env
-$ re-fsm -c ./examples/settings-example.json
+$ re-core -c ./examples/settings-example.json
 ````
 
 CONFIGURATION
