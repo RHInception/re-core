@@ -45,6 +45,7 @@ def receive(ch, method, properties, body):
             notify.info("new job create")
             reply_to = properties.reply_to
             # print "reply to happened? %s" % reply_to
+
             out.info(
                 "New job requested, starting release "
                 "process for %s ..." % msg["project"])
@@ -73,13 +74,13 @@ def receive(ch, method, properties, body):
                 recore.job.status.running(properties, False)
             if msg['status'] == 'completed':
                 out.error(
-                    "Job JOB_NAME_HERE for release %s failed. "
-                    "Aborting release." % app_id, correlation_id)
+                    "Job %s for release %s is finished." % (
+                        app_id, correlation_id))
                 notify.info(
-                    "Job %s for release %s failed. Aborting release." % (
+                    "Job %s for release %s is finished." % (
                         app_id, correlation_id))
                 # if there are no more steps mark running as false
-                # recore.job.status.running(properties, False)
+                recore.job.status.running(properties, False)
                 # TODO: execute the next step
                 pass
         except KeyError, ke:
