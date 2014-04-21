@@ -26,18 +26,12 @@ connection = mock.MagicMock()
 connection.channel = mock.MagicMock(return_value=channel)
 
 
-utils.pika.BlockingConnection = mock.MagicMock(
-    pika.BlockingConnection,
-    return_value=connection)
-
-
 class TestUtils(TestCase):
 
     def tearDown(self):
         """
         Reset mocks.
         """
-        utils.pika.BlockingConnection.reset_mock()
         channel.reset_mock()
 
     def test_create_json_str(self):
@@ -60,25 +54,29 @@ class TestUtils(TestCase):
         """
         Check that connect_mq follows the expected connection steps
         """
-        name = "name"
-        server = "127.0.0.1"
-        password = "password"
-        exchange = "exchange"
-        result = utils.connect_mq(
-            name=name, password=password,
-            server=server, exchange=exchange)
 
-        assert result[0] == channel
-        assert result[1] == connection
-        connection_params = utils.pika.BlockingConnection.call_args[0][0]
-        assert connection_params.host == server
-        assert connection_params.credentials.username == name
-        assert connection_params.credentials.password == password
+        with mock.patch(
+                'pika.BlockingConnection') as utils.pika.BlockingConnection:
+            utils.pika.BlockingConnection.return_value = connection
+            name = "name"
+            server = "127.0.0.1"
+            password = "password"
+            exchange = "exchange"
+            result = utils.connect_mq(
+                name=name, password=password,
+                server=server, exchange=exchange)
 
-        channel.exchange_declare.assert_called_with(
-            exchange=exchange,
-            durable=True,
-            exchange_type='topic')
+            assert result[0] == channel
+            assert result[1] == connection
+            connection_params = utils.pika.BlockingConnection.call_args[0][0]
+            assert connection_params.host == server
+            assert connection_params.credentials.username == name
+            assert connection_params.credentials.password == password
+
+            channel.exchange_declare.assert_called_with(
+                exchange=exchange,
+                durable=True,
+                exchange_type='topic')
 
     def test_parse_config_file(self):
         """

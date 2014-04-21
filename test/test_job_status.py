@@ -24,11 +24,8 @@ from recore.job import status
 # Mocks
 UTCNOW = datetime.datetime.utcnow()
 PROPERTIES = pika.spec.BasicProperties(correlation_id=12345, app_id='shexec')
-status.recore.mongo = mock.MagicMock(status.recore.mongo)
-status.dt = mock.MagicMock('datetime.datetime')
-status.dt.utcnow = mock.MagicMock(return_value=UTCNOW)
-channel = mock.MagicMock()
 
+channel = mock.MagicMock()
 
 
 class TestJobStatus(TestCase):
@@ -37,33 +34,40 @@ class TestJobStatus(TestCase):
         """
         Reset mocks.
         """
-        status.recore.mongo.reset_mock()
-        status.dt.utcnow.reset_mock()
         channel.reset_mock()
 
     def test_update(self):
         """
         Verify status.update works when everything is perfect
         """
-        assert status.update(channel, mock.MagicMock(), PROPERTIES, {}) is None
-        status.recore.mongo.update_state.assert_called_with(
-            status.recore.mongo.database,
-            12345,
-            {'timestamp': UTCNOW, 'plugin': 'shexec'})
+        with mock.patch(
+                'recore.job.status.recore.mongo') as status.recore.mongo:
+            with mock.patch('recore.job.status.dt') as status.dt:
+                status.dt = mock.MagicMock('datetime.datetime')
+                status.dt.utcnow = mock.MagicMock(return_value=UTCNOW)
+
+                assert status.update(
+                    channel, mock.MagicMock(), PROPERTIES, {}) is None
+                status.recore.mongo.update_state.assert_called_with(
+                    status.recore.mongo.database,
+                    12345,
+                    {'timestamp': UTCNOW, 'plugin': 'shexec'})
 
     def test_running(self):
         """
         Verify running passes the correct information to mongo
         """
-        assert status.running(PROPERTIES, True) == None
+        with mock.patch(
+                'recore.job.status.recore.mongo') as status.recore.mongo:
+            assert status.running(PROPERTIES, True) is None
 
-        status.recore.mongo.mark_release_running.assert_called_with(
-            status.recore.mongo.database,
-            12345,
-            True)
+            status.recore.mongo.mark_release_running.assert_called_with(
+                status.recore.mongo.database,
+                12345,
+                True)
 
-        assert status.running(PROPERTIES, False) == None
-        status.recore.mongo.mark_release_running.assert_called_with(
-            status.recore.mongo.database,
-            12345,
-            False)
+            assert status.running(PROPERTIES, False) is None
+            status.recore.mongo.mark_release_running.assert_called_with(
+                status.recore.mongo.database,
+                12345,
+                False)

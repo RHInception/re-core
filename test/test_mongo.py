@@ -22,8 +22,6 @@ from recore import mongo
 
 # Mocks
 connection = mock.MagicMock('connection')
-mongo.MongoClient = mock.MagicMock(
-    mongo.MongoClient, return_value=connection)
 
 
 class TestMongo(TestCase):
@@ -32,30 +30,32 @@ class TestMongo(TestCase):
         """
         Reset mocks.
         """
-        mongo.MongoClient.reset_mock()
+#        mongo.MongoClient.reset_mock()
         connection.reset_mock()
 
     def test_connect(self):
         """
         Verify mongo connections work as expected
         """
-        print mongo
-        user = "user"
-        passwd = "password"
-        host = "127.0.0.1"
-        port = 1234
-        db = "database"
+        with mock.patch('recore.mongo.MongoClient') as mongo.MongoClient:
+            mongo.MongoClient.return_value = connection
 
-        result = mongo.connect(host, port, user, passwd, db)
+            user = "user"
+            passwd = "password"
+            host = "127.0.0.1"
+            port = 1234
+            db = "database"
 
-        mongo.MongoClient.assert_called_with("mongodb://%s:%s@%s:%s/%s" % (
-            user, passwd, host, port, db))
-        print result
-        assert result[0] == connection
-        assert result[1] == connection[db]
+            result = mongo.connect(host, port, user, passwd, db)
+
+            mongo.MongoClient.assert_called_with("mongodb://%s:%s@%s:%s/%s" % (
+                user, passwd, host, port, db))
+            assert result[0] == connection
+            assert result[1] == connection[db]
 
     def test_lookup_project(self):
         """
+        Make sure looking up projects follows the correct path
         """
         db = mock.MagicMock()
         collection = mock.MagicMock()

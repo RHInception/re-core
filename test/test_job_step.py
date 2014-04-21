@@ -21,7 +21,8 @@ from . import TestCase, unittest
 from recore.job import step
 
 # Mocks
-PROPERTIES = pika.spec.BasicProperties(correlation_id=12345)
+CORR_ID = 12345
+PROPERTIES = pika.spec.BasicProperties(correlation_id=CORR_ID)
 channel = mock.MagicMock()
 
 
@@ -38,7 +39,8 @@ class TestJobStep(TestCase):
         Verify step.run works when everything is perfect
         """
         assert step.run(channel, 'test', PROPERTIES.correlation_id) is None
-        assert channel.basic_publish.call_args[1]['body'] == '{"project": "test"}'
-        assert channel.basic_publish.call_args[1]['exchange'] == 're'
-        assert channel.basic_publish.call_args[1]['routing_key'] == 'plugin.shexec.start'
-        assert channel.basic_publish.call_args[1]['properties'].correlation_id == PROPERTIES.correlation_id
+        call_args = channel.basic_publish.call_args[1]
+        assert call_args['body'] == '{"project": "test"}'
+        assert call_args['exchange'] == 're'
+        assert call_args['routing_key'] == 'plugin.shexec.start'
+        assert call_args['properties'].correlation_id == CORR_ID
