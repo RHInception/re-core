@@ -1,0 +1,20 @@
+{
+    "LOGFILE": "recore.log",
+    "MQ": {
+        "SERVER": "amqp.example.com",
+        "NAME": "username",
+        "PASSWORD": "password",
+	"EXCHANGE": "my_exchange",
+	"QUEUE": "re"
+    },
+    "DB": {
+	"SERVERS": [
+	    "mongo01.example.com",
+	    "mongo02.example.com"
+	],
+	"DATABASE": "re",
+	"NAME": "lordmongo",
+	"PASSWORD": "webscale",
+	"PORT": 27017
+    },{
+}
