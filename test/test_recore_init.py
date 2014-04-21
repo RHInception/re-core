@@ -53,3 +53,33 @@ class TestRecoreInit(TestCase):
         # Case 3: File exists and is valid json
         with mock.patch('recore.start_logging'):
             cfg = recore.parse_config(self.config_file_valid)
+
+    @mock.patch('recore.mongo.connect')
+    def test_init_mongo(self, mongo_connect):
+        connection = mock.MagicMock('connection')
+        database = mock.MagicMock('database')
+        mongo_connect.return_value = (connection, database)
+        connect_params = {
+            "SERVERS": [
+                "mongo01.example.com",
+                "mongo02.example.com"
+            ],
+            "DATABASE": "re",
+            "NAME": "lordmongo",
+            "PASSWORD": "webscale",
+            "PORT": 27017
+        }
+        recore.init_mongo(connect_params)
+
+        # Verify that init_mongo sets the mongo module conn/db variables
+        self.assertIs(recore.mongo.connection, connection)
+        self.assertIs(recore.mongo.database, database)
+
+    def test_init_amqp(self):
+        pass
+
+    def test_watch_the_queue(self):
+        pass
+
+    def test_main(self):
+        pass
