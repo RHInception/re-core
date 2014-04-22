@@ -111,7 +111,12 @@ handler"""
         pass
 
 
-def main(args):
+def main(args):  # pragma: no cover
+    """
+    Main script entry point.
+
+    *Note*: Not covered for unittests as it glues tested code together.
+    """
     import pymongo.errors
 
     config = parse_config(args.config)
