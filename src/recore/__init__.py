@@ -36,7 +36,7 @@ def start_logging(log_file, log_level):
     # And now the stdout logging
     out2 = logging.getLogger('recore.stdout')
     out2.setLevel('DEBUG')
-    lh2 = logging.StreamHandler(stream=sys.stdout)
+    lh2 = logging.StreamHandler(sys.stdout)
     lh2.setFormatter(logging.Formatter(
         '%(module)s - %(levelname)s - %(message)s'))
     out2.addHandler(lh2)
