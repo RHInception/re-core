@@ -1,6 +1,8 @@
 RELEASE ENGINE CORE
 -------------------
 
+[![Build Status](https://api.travis-ci.org/RHInception/re-core.png)](https://travis-ci.org/RHInception/re-core/)
+
 This is the **core** component of the Inception Release Engine. The
 core is essentially a finite state machine (**FSM**) hooked into a
 message bus and a database.

@@ -19,7 +19,11 @@ Build script.
 
 import os.path
 
+from pip.req import parse_requirements
 from setuptools import setup, find_packages
+
+install_reqs = parse_requirements('requirements.txt')
+reqs = [str(ir.req) for ir in install_reqs]
 
 
 setup(
@@ -33,8 +37,7 @@ setup(
         'recore': os.path.join('src', 'recore')
     },
     packages=find_packages('src'),
-    # Sorry, but this doesn't work for now
-    # install_requires='pika => 0.9.12',
+    install_requires=reqs,
     classifiers=[
         ('License :: OSI Approved :: GNU Affero General Public '
          'License v3 or later (AGPLv3+)'),
