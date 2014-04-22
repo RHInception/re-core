@@ -79,7 +79,22 @@ class TestRecoreInit(TestCase):
         pass
 
     def test_watch_the_queue(self):
-        pass
+        """
+        Verify that consuming happens when watch_the_queue is called.
+        """
+        channel = mock.MagicMock('channel')
+        channel.basic_consume = mock.MagicMock('basic_consume')
+        channel.start_consuming = mock.MagicMock('start_consuming')
+        connection = mock.MagicMock('connection')
+        queue_name = 'maiqueu'
 
-    def test_main(self):
-        pass
+        # Call the tested function
+        recore.watch_the_queue(channel, connection, queue_name)
+
+        # Verify calls are made
+        channel.basic_consume.assert_called_once_with(
+            recore.receive.receive,
+            queue=queue_name,
+            no_ack=True)
+
+        channel.start_consuming.assert_called_once_with()
