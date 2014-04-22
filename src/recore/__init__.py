@@ -19,6 +19,7 @@ import recore.receive
 import logging
 import recore.mongo
 import sys
+import pika.exceptions
 
 
 def start_logging(log_file, log_level):
@@ -73,10 +74,8 @@ def init_mongo(db):
 
 def init_amqp(mq):
     """Open a channel to our AMQP server"""
-    import pika.exceptions
-
     out = logging.getLogger('recore')
-    notify = logging.getLogger('recore.stdout')
+    # notify = logging.getLogger('recore.stdout')
 
     (channel, connection) = recore.utils.connect_mq(
         name=mq['NAME'],
