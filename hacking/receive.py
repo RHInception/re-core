@@ -5,7 +5,7 @@ import sys
 import json
 import os
 
-components = [ 'fsm', 'worker', 'logger', 'rest', 'notification' ]
+components = [ 'fsm queue', 'worker queue', 'logger queue', 'rest queue', 'notification' ]
 comp_descs = [
     'job.create/release.step.*.*',
     'plugin.shexec.start',
@@ -52,7 +52,7 @@ def repl(mq_config):
                                        mq_config['NAME'],
                                        mq_config['PASSWORD'],
                                        mq_config['EXCHANGE'])
-        result = channel.queue_declare(durable=True, queue='%s queue' % components[int(receive_as)])
+        result = channel.queue_declare(durable=True, queue=components[int(receive_as)])
         queue_name = result.method.queue
 
         channel.basic_consume(callback,
