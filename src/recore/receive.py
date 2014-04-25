@@ -21,10 +21,26 @@ import recore.job.step
 import recore.job.status
 
 
+def reject(ch, method, requeue=False):
+    """
+    Reject the message with the given `basic_deliver`
+    """
+    ch.basic_reject(
+        method.delivery_tag,
+        requeue=requeue)
+
+
 def receive(ch, method, properties, body):
     out = logging.getLogger('recore')
     notify = logging.getLogger('recore.stdout')
-    msg = recore.utils.load_json_str(body)
+    try:
+        msg = recore.utils.load_json_str(body)
+    except ValueError, ve:
+        # Not JSON or not able to decode
+        out.debug("Unable to decode message. Rejecting: %s" % msg)
+        reject(ch, method, True)
+        notify.info("Unable to decode message. Rejected.")
+        return
     topic = method.routing_key
     out.info('Received a new message via routing key %s' % topic)
     out.debug("Message: %s" % msg)
