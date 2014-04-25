@@ -61,7 +61,7 @@ class TestReceive(TestCase):
 
                     # Verify the items which should have triggered
                     receive.recore.job.create.release.assert_called_once_with(
-                        channel, project, REPLY_TO)
+                        channel, project, REPLY_TO, {})
                     receive.recore.job.step.run.assert_called_once_with(
                         channel, project, release_id)
 

@@ -16,18 +16,28 @@
 
 import pika.spec
 import logging
+import recore.mongo
 import recore.utils
 
 
-def run(channel, project, id):
+def run(channel, project, id, params={}):
     props = pika.spec.BasicProperties()
     props.correlation_id = id
     out = logging.getLogger('recore')
     notify = logging.getLogger('recore.stdout')
     notify.info('About to kick off a worker task: <id>%s' % id)
 
+    # TODO: Use the DB to look up step and required dynamic inputs
+    # mongo_db = recore.mongo.database
+    # step = recore.mongo....
+    # dynamic = step...
+    dynamic = {}
+    params.update(dynamic)
     routing_key = 'plugin.shexec.start'
-    to_worker = recore.utils.create_json_str({'project': project})
+
+    to_worker = recore.utils.create_json_str({
+        'project': project,
+        'params': params})
     notify.info("Created string: %s" % to_worker)
     out.debug(
         "Sending message for project %s and correlation if %s "

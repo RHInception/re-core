@@ -42,7 +42,7 @@ class TestJobCreate(TestCase):
             create.recore.mongo.initialize_state = mock.MagicMock(
                 return_value=1234567890)
 
-            assert create.release(channel, 'test', 'replyto') == "1234567890"
+            assert create.release(channel, 'test', 'replyto', {}) == "1234567890"
             channel.basic_publish.assert_called_with(
                 exchange='',
                 routing_key='replyto',
@@ -58,7 +58,7 @@ class TestJobCreate(TestCase):
             create.recore.mongo.lookup_project = mock.MagicMock(
                 return_value={})
 
-            assert create.release(channel, 'test', 'replyto') is None
+            assert create.release(channel, 'test', 'replyto', {}) is None
             channel.basic_publish.assert_called_with(
                 exchange='',
                 routing_key='replyto',

@@ -96,6 +96,7 @@ class TestMongo(TestCase):
                 'project': project,
                 'step_log': [],
                 'created': UTCNOW,
+                'dynamic': {},
                 'running': True,
             })
 

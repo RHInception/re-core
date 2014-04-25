@@ -28,12 +28,12 @@ import recore.mongo
 import logging
 
 
-def release(ch, project, reply_to):
+def release(ch, project, reply_to, dynamic):
     """`ch` is an open AMQP channel
 
     `project` is the name of a project to begin a release for.
-
     `reply_to` is a temporary channel
+    `dynamic` is a dict storing dynamic input -- default is {}
 
 Reference the project name against the database to retrieve a list of
 release steps to execute.
@@ -60,13 +60,15 @@ just return it.
     notify.info("looked up project: %s" % project)
 
     if project_exists:
-        id = str(recore.mongo.initialize_state(mongo_db, project))
+        # Initialize state and include the dynamic items
+        id = str(recore.mongo.initialize_state(mongo_db, project, dynamic))
         out.info("Project %s exists in mongo with id %s" % (project, id))
     else:
         out.info("Project %s does not exists in mongo" % project)
         id = None
 
     body = recore.utils.create_json_str({'id': id})
+
     out.debug("Sending to routing key %s: %s" % (reply_to, body))
     ch.basic_publish(exchange='',
                      routing_key=reply_to,

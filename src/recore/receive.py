@@ -44,13 +44,12 @@ def receive(ch, method, properties, body):
             # queue to respond back on.
             notify.info("new job create")
             reply_to = properties.reply_to
-            # print "reply to happened? %s" % reply_to
 
             out.info(
                 "New job requested, starting release "
                 "process for %s ..." % msg["project"])
-            id = recore.job.create.release(ch, msg['project'], reply_to)
-            # print "got that id"
+            id = recore.job.create.release(
+                ch, msg['project'], reply_to, msg.get('dynamic', {}))
             recore.job.step.run(ch, msg['project'], id)
         except KeyError, ke:
             notify.info("Missing an expected key in message: %s" % ke)

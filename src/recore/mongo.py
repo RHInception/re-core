@@ -67,7 +67,7 @@ corresponding to the ObjectID value in MongoDB."""
     pass
 
 
-def initialize_state(d, project):
+def initialize_state(d, project, dynamic={}):
     """Initialize the state of a given project release"""
     # Just record the name now and insert an empty array to record the
     # result of steps. Oh, and when it started. Maybe we'll even add
@@ -80,8 +80,11 @@ def initialize_state(d, project):
     # name, and make sure the insert method returns a mocked ObjectID
     # which when `str`'d returns a reasonable value.
     out = logging.getLogger('recore')
+
+    # TODO: Validate dynamic before inserting state ...
     state0 = {
         'project': project,
+        'dynamic': dynamic,
         'step_log': [],
         'created': datetime.datetime.utcnow(),
         'running': True,

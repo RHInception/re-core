@@ -40,7 +40,7 @@ class TestJobStep(TestCase):
         """
         assert step.run(channel, 'test', PROPERTIES.correlation_id) is None
         call_args = channel.basic_publish.call_args[1]
-        assert call_args['body'] == '{"project": "test"}'
+        assert call_args['body'] == '{"project": "test", "params": {}}'
         assert call_args['exchange'] == 're'
         assert call_args['routing_key'] == 'plugin.shexec.start'
         assert call_args['properties'].correlation_id == CORR_ID
