@@ -25,6 +25,7 @@ import threading
 import pika.spec
 import pymongo.errors
 
+
 class FSM(threading.Thread):
     """The re-core Finite State Machine to oversee the execution of
 a project's release steps."""
@@ -91,7 +92,7 @@ a project's release steps."""
                               body=json.dumps(msg),
                               properties=props)
 
-        self.app_logger.info("Sent message with topic '%s' and body: %s" % \
+        self.app_logger.info("Sent message with topic '%s' and body: %s" %
                              (plugin_queue, str(json.dumps(msg))))
 
         # Begin consuming from reply_queue
@@ -158,14 +159,14 @@ a project's release steps."""
 
             _id = {'_id': ObjectId(self.state_id)}
             _id_update_state = self.state_coll.update(_id,
-                                                  _update_state)
+                                                      _update_state)
 
             if _id_update_state:
                 self.app_logger.info("Updated currently running task")
             else:
                 self.app_logger.error("Failed to update running task")
         except pymongo.errors.PyMongoError, pmex:
-            out.error(
+            self.app_logger.error(
                 "Unable to update state with %s. "
                 "Propagating PyMongo error: %s" % (_update_state, pmex))
             raise pmex
@@ -177,26 +178,22 @@ a project's release steps."""
         try:
             self.active = self.remaining.pop(0)
             _id = {'_id': ObjectId(self.state_id)}
-            _update_active_step = {
+            _update_state = {
                 '$set': {
-                    'active_step': self.active
-                }
-            }
-            _update_remaining_steps = {
-                '$set': {
+                    'active_step': self.active,
                     'remaining_steps': self.remaining
                 }
             }
-            _id_active = self.state_coll.update(_id, _update_active_step)
-            _id_remaining = self.state_coll.update(_id, _update_remaining_steps)
-            if _id_active and _id_remaining:
+
+            _id_update = self.state_coll.update(_id, _update_state)
+            if _id_update:
                 self.app_logger.info("Updated currently running task")
             else:
                 self.app_logger.error("Failed to update running task")
         except pymongo.errors.PyMongoError, pmex:
-            out.error(
+            self.app_logger.error(
                 "Unable to update state with %s. "
-                "Propagating PyMongo error: %s" % (_update, pmex))
+                "Propagating PyMongo error: %s" % (_update_state, pmex))
             raise pmex
 
     def _cleanup(self):
@@ -217,9 +214,9 @@ a project's release steps."""
             else:
                 self.app_logger.error("Could not set 'ended' item in state document")
         except pymongo.errors.PyMongoError, pmex:
-            out.error(
+            self.app_logger.error(
                 "Unable to update state with %s. "
-                "Propagating PyMongo error: %s" % (_update, pmex))
+                "Propagating PyMongo error: %s" % (_update_state, pmex))
             raise pmex
 
     def _connect_mq(self):
@@ -242,7 +239,7 @@ a project's release steps."""
         self.app_logger.info("Updating state for: %s" % self.state_id)
         try:
             self.state.update(recore.mongo.lookup_state(self.state_id))
-        except TypeError, te:
+        except TypeError:
             self.app_logger.error("The given state document could not be located: %s" % self.state_id)
             raise LookupError("The given state document could not be located: %s" % self.state_id)
 
