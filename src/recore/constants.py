@@ -17,11 +17,11 @@
 NEW_STATE_RECORD = {
     'reply_to': None,
     'project': None,
-    'started': None,
+    'created': None,
     # 'ended': None,
     # 'failed': False,
     'dynamic': {},
-    'completed steps': [],
+    'completed_steps': [],
     'active_step': {},
     'remaining_steps': []
 }

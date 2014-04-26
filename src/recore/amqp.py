@@ -14,8 +14,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
+import pika
+
 MQ_CONF = {}
 connection = None
+
 
 def init_amqp(mq):
     """Open a channel to our AMQP server"""
@@ -24,7 +28,7 @@ def init_amqp(mq):
     out = logging.getLogger('recore.amqp')
     # notify = logging.getLogger('recore.stdout')
 
-    (channel, connection) = recore.utils.connect_mq(
+    (channel, connection) = connect_mq(
         name=mq['NAME'],
         password=mq['PASSWORD'],
         server=mq['SERVER'],
@@ -39,7 +43,8 @@ def init_amqp(mq):
     recore.amqp.connection = connection
     return (channel, connection, queue_name)
 
-def connect_mq(name=None, password=None, server=None, exchange=None):
+
+def connect_mq(name=None, password=None, server=None, exchange=None, **kwargs):
     """
     Return channel and connection objects hooked into our message bus
 
@@ -63,3 +68,22 @@ def connect_mq(name=None, password=None, server=None, exchange=None):
                              exchange_type='topic')
     out.debug("Exchange declared.")
     return (channel, connection)
+
+
+def watch_the_queue(channel, connection, queue_name, callback=None):
+    """Begin consuming messages `queue_name` on the bus. Set our default
+callback handler
+    """
+    channel.basic_consume(callback,
+                          queue=queue_name,
+                          no_ack=True)
+    try:
+        notify = logging.getLogger('recore.stdout')
+        notify.info('FSM online and listening for messages')
+        channel.start_consuming()
+        out = logging.getLogger('recore')
+        out.debug('Consuming messages from queue: %s' % queue_name)
+    except KeyboardInterrupt:
+        channel.close()
+        connection.close()
+        pass

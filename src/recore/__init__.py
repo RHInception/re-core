@@ -42,6 +42,7 @@ def start_logging(log_file, log_level):
     out2.addHandler(lh2)
     out2.debug("initialized stdout logger")
 
+
 def parse_config(config_path):
     """Read in the config file. Or die trying"""
     try:
@@ -57,6 +58,7 @@ def parse_config(config_path):
         print "ERROR config file is not valid json: %s" % vex
         raise SystemExit(1)
     return config
+
 
 def main(args):  # pragma: no cover
     """

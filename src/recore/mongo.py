@@ -17,12 +17,28 @@
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import pymongo.errors
+import pymongo.database
 import urllib
 import datetime
 import logging
+import recore.constants
+import recore.utils
 
 connection = None
 database = None
+
+
+def init_mongo(db):
+    """Open up a MongoDB connection"""
+    import recore.mongo
+    (c, d) = connect(
+        db['SERVERS'][0],
+        db['PORT'],
+        db['NAME'],
+        db['PASSWORD'],
+        db['DATABASE'])
+    recore.mongo.connection = c
+    recore.mongo.database = d
 
 
 def connect(host, port, user, password, db):
@@ -61,13 +77,25 @@ is either a hash or `None` if no matches were found.
         return {}
 
 
-def lookup_state(d, c_id):
-    """`d` is a mongodb database and `c_id` is a correlation ID
-corresponding to the ObjectID value in MongoDB."""
-    pass
+def lookup_state(c_id):
+    """`c_id` is a correlation ID corresponding to the ObjectID value in
+MongoDB.
+    """
+    # using the recore.mongo.database database, create a
+    # pymongo.collection.Collection object pointing at the 'state'
+    # collection
+    states = database['state']
+    out = logging.getLogger('recore.stdout')
+    out.info("Looking up state for %s" % ObjectId(str(c_id)))
+    # findOne state document with _id of `c_id`. If a document is
+    # found, returns a hash, if no document is found, returns None
+    project_state = states.find_one({'_id': ObjectId(str(c_id))})
+    # After adding tests, don't bother assigning project_state, just
+    # return it.
+    return project_state
 
 
-def initialize_state(d, project, dynamic={}):
+def initialize_state(d, project, dynamic={}, reply_to=None):
     """Initialize the state of a given project release"""
     # Just record the name now and insert an empty array to record the
     # result of steps. Oh, and when it started. Maybe we'll even add
@@ -81,14 +109,18 @@ def initialize_state(d, project, dynamic={}):
     # which when `str`'d returns a reasonable value.
     out = logging.getLogger('recore')
 
+    project_steps = lookup_project(d, project).get('steps', [])
+
     # TODO: Validate dynamic before inserting state ...
-    state0 = {
+    state0 = recore.constants.NEW_STATE_RECORD.copy()
+    state0.update({
+        'created': datetime.datetime.utcnow(),
         'project': project,
         'dynamic': dynamic,
-        'step_log': [],
-        'created': datetime.datetime.utcnow(),
-        'running': True,
-    }
+        'reply_to': reply_to,
+        'remaining_steps': project_steps
+    })
+
     try:
         id = d['state'].insert(state0)
         out.info("Added new state record with id: %s" % str(id))

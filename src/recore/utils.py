@@ -14,10 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import logging
 import os
 import json
-import pika
 
 
 def parse_config_file(path):
@@ -25,32 +23,6 @@ def parse_config_file(path):
         return json.loads(open(os.path.expanduser(path)).read())
     except IOError:
         raise IOError("Path to config file doesn't exist: %s" % path)
-
-
-def connect_mq(name=None, password=None, server=None, exchange=None):
-    """
-    Return channel and connection objects hooked into our message bus
-
-    `name` - Username to connect with
-    `password` - Password to authenticate with
-    `server` - Hostname of the actual message bus
-    `exchange` - Exchange to connect to on the bus
-
-    Returns a 2-tuple of `channel` and `connection` objects
-    """
-    out = logging.getLogger('recore')
-    creds = pika.credentials.PlainCredentials(name, password)
-    connection = pika.BlockingConnection(pika.ConnectionParameters(
-        host=str(server),
-        credentials=creds))
-    out.debug("Connection to MQ opened.")
-    channel = connection.channel()
-    out.debug("MQ channel opened. Declaring exchange ...")
-    channel.exchange_declare(exchange=exchange,
-                             durable=True,
-                             exchange_type='topic')
-    out.debug("Exchange declared.")
-    return (channel, connection)
 
 
 def load_json_str(jstr):

@@ -59,10 +59,18 @@ just return it.
     out.debug("Mongo query to get info on %s finished" % project)
     notify.info("looked up project: %s" % project)
 
+    # Set up the FSM <-> worker queue
+    result = ch.queue_declare(queue='',
+                              durable=False)
+
+    fsm_worker_reply = result.method.queue
+
+    notify.info("Temp queue created for worker <-> fsm comm.: %s" % fsm_worker_reply)
+
     if project_exists:
         # Initialize state and include the dynamic items
-        id = str(recore.mongo.initialize_state(mongo_db, project, dynamic))
-        out.info("Project %s exists in mongo with id %s" % (project, id))
+        id = str(recore.mongo.initialize_state(mongo_db, project, dynamic, fsm_worker_reply))
+        out.info("State created for '%s' in mongo with id: %s" % (project, id))
     else:
         out.info("Project %s does not exists in mongo" % project)
         id = None
@@ -77,5 +85,4 @@ just return it.
         project, str(id)))
     notify.info("Emitted message to start new release for %s. Job id: %s" % (
         project, str(id)))
-
     return id
