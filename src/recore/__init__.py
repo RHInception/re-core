@@ -42,7 +42,6 @@ def start_logging(log_file, log_level):
     out2.addHandler(lh2)
     out2.debug("initialized stdout logger")
 
-
 def parse_config(config_path):
     """Read in the config file. Or die trying"""
     try:
@@ -59,57 +58,6 @@ def parse_config(config_path):
         raise SystemExit(1)
     return config
 
-
-def init_mongo(db):
-    """Open up a MongoDB connection"""
-    (c, d) = recore.mongo.connect(
-        db['SERVERS'][0],
-        db['PORT'],
-        db['NAME'],
-        db['PASSWORD'],
-        db['DATABASE'])
-    recore.mongo.connection = c
-    recore.mongo.database = d
-
-
-def init_amqp(mq):
-    """Open a channel to our AMQP server"""
-    out = logging.getLogger('recore')
-    # notify = logging.getLogger('recore.stdout')
-
-    (channel, connection) = recore.utils.connect_mq(
-        name=mq['NAME'],
-        password=mq['PASSWORD'],
-        server=mq['SERVER'],
-        exchange=mq['EXCHANGE'])
-    connect_string = "amqp://%s:******@%s:%s/%s" % (
-        mq['NAME'], mq['SERVER'], mq['PORT'], mq['EXCHANGE'])
-    out.debug("Opened AMQP connection: %s" % connect_string)
-
-    receive_as = mq['QUEUE']
-    result = channel.queue_declare(durable=True, queue=receive_as)
-    queue_name = result.method.queue
-    return (channel, connection, queue_name)
-
-
-def watch_the_queue(channel, connection, queue_name):
-    """Begin consuming messages from the bus. Set our default callback
-handler"""
-    channel.basic_consume(recore.receive.receive,
-                          queue=queue_name,
-                          no_ack=True)
-    try:
-        notify = logging.getLogger('recore.stdout')
-        notify.info('FSM online and listening for messages')
-        channel.start_consuming()
-        out = logging.getLogger('recore')
-        out.debug('Consuming messages from queue: %s' % queue_name)
-    except KeyboardInterrupt:
-        channel.close()
-        connection.close()
-        pass
-
-
 def main(args):  # pragma: no cover
     """
     Main script entry point.
@@ -123,7 +71,7 @@ def main(args):  # pragma: no cover
     out = logging.getLogger('recore')
     notify = logging.getLogger('recore.stdout')
     try:
-        init_mongo(config['DB'])
+        recore.mongo.init_mongo(config['DB'])
     except pymongo.errors.ConnectionFailure, cfe:
         out.fatal("Connection failiure to Mongo: %s. Exiting ..." % cfe)
         notify.fatal("Connection failiure to Mongo: %s. Exiting ..." % cfe)
@@ -134,7 +82,7 @@ def main(args):  # pragma: no cover
         raise SystemExit(1)
 
     try:
-        (channel, connection, queue_name) = init_amqp(config['MQ'])
+        (channel, connection, queue_name) = recore.amqp.init_amqp(config['MQ'])
     except KeyError, ke:
         out.fatal("Missing a required key in MQ config: %s" % ke)
         notify.fatal("Missing a required key in MQ config: %s" % ke)
@@ -150,7 +98,7 @@ def main(args):  # pragma: no cover
         notify.fatal("Unknown issue connecting to AMQP: %s" % ex)
         raise SystemExit(1)
     try:
-        watch_the_queue(channel, connection, queue_name)
+        recore.amqp.watch_the_queue(channel, connection, queue_name, callback=recore.receive.receive)
     except (
             pika.exceptions.ProtocolSyntaxError,
             pika.exceptions.AMQPError), ex:
@@ -164,4 +112,4 @@ def main(args):  # pragma: no cover
 ######################################################################
 # pika spews messages about logging handlers by default. So we're just
 # going to set the level to CRITICAL so we don't see most of them.
-logging.getLogger('pika').setLevel(logging.DEBUG)
+logging.getLogger('pika').setLevel(logging.CRITICAL)
