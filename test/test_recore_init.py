@@ -133,7 +133,7 @@ class TestRecoreInit(TestCase):
         queue_name = 'maiqueu'
 
         # Fake callback for consumed messages
-        cb = lambda x: pass
+        cb = lambda x: type(x)
 
         # Call the tested function
         recore.amqp.watch_the_queue(channel, connection, queue_name, callback=cb)
