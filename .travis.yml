@@ -10,5 +10,5 @@ script:
 notifications:
     email: false
 branches:
-    except:
-        - fsm
+    only:
+        - master
