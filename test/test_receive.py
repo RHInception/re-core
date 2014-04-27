@@ -43,7 +43,7 @@ class TestReceive(TestCase):
         Verify when topic job.create is received the FSM handles it properly
         """
         project = 'testproject'
-        body = '{"project": "%s"}' % project
+        body = '{"project": "%s", "dynamic": {}}' % project
         release_id = 12345
 
         method = mock.MagicMock(routing_key='job.create')
@@ -62,8 +62,6 @@ class TestReceive(TestCase):
                     # Verify the items which should have triggered
                     receive.recore.job.create.release.assert_called_once_with(
                         channel, project, REPLY_TO, {})
-                    receive.recore.job.step.run.assert_called_once_with(
-                        channel, project, release_id)
 
     def test_release_step_failure(self):
         """

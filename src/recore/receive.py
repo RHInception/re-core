@@ -40,6 +40,7 @@ def receive(ch, method, properties, body):
     # property of the new document created in the 'state' collection.
     ##################################################################
     if topic == 'job.create':
+        id = None
         try:
             # We need to get the name of the temporary
             # queue to respond back on.
@@ -52,18 +53,18 @@ def receive(ch, method, properties, body):
                 "process for %s ..." % msg["project"])
 
             id = recore.job.create.release(
-                #ch, msg['project'], reply_to, msg.get('dynamic', {}))
                 ch, msg['project'], reply_to, msg['dynamic'])
         except KeyError, ke:
             notify.info("Missing an expected key in message: %s" % ke)
             out.error("Missing an expected key in message: %s" % ke)
 
-        # Skip this try/except until we work all the bugs out of the FSM
-        # try:
-        runner = recore.fsm.FSM(id)
-        runner.run()
-        # except Exception, e:
-        # notify.error(str(e))
+        if id:
+            # Skip this try/except until we work all the bugs out of the FSM
+            # try:
+            runner = recore.fsm.FSM(id)
+            runner.run()
+            # except Exception, e:
+            # notify.error(str(e))
 
     else:
         out.warn("Unknown routing key %s. Doing nothing ...")

@@ -19,6 +19,7 @@ import mock
 from . import TestCase, unittest
 
 from recore import utils
+from recore import amqp
 
 # Mocks
 channel = mock.MagicMock()
@@ -56,19 +57,19 @@ class TestUtils(TestCase):
         """
 
         with mock.patch(
-                'pika.BlockingConnection') as utils.pika.BlockingConnection:
-            utils.pika.BlockingConnection.return_value = connection
+                'pika.BlockingConnection') as amqp.pika.BlockingConnection:
+            amqp.pika.BlockingConnection.return_value = connection
             name = "name"
             server = "127.0.0.1"
             password = "password"
             exchange = "exchange"
-            result = utils.connect_mq(
+            result = amqp.connect_mq(
                 name=name, password=password,
                 server=server, exchange=exchange)
 
             assert result[0] == channel
             assert result[1] == connection
-            connection_params = utils.pika.BlockingConnection.call_args[0][0]
+            connection_params = amqp.pika.BlockingConnection.call_args[0][0]
             assert connection_params.host == server
             assert connection_params.credentials.username == name
             assert connection_params.credentials.password == password

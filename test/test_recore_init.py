@@ -71,14 +71,14 @@ class TestRecoreInit(TestCase):
             "PASSWORD": "webscale",
             "PORT": 27017
         }
-        recore.init_mongo(connect_params)
+        recore.mongo.init_mongo(connect_params)
 
         # Verify that init_mongo sets the mongo module conn/db variables
         self.assertIs(recore.mongo.connection, connection)
         self.assertIs(recore.mongo.database, database)
 
     @mock.patch.object(pika, 'channel')
-    @mock.patch('recore.utils.connect_mq')
+    @mock.patch('recore.amqp.connect_mq')
     def test_init_amqp(self, connect_mq, mock_channel):
         """We can connect to AMQP properly"""
         connection = mock.MagicMock(pika.connection)
@@ -100,7 +100,7 @@ class TestRecoreInit(TestCase):
             "QUEUE": "maiqueue"
         }
         #channel.queue_declare.return_value = method
-        (_channel, _connection, _queue_name) = recore.init_amqp(connect_params)
+        (_channel, _connection, _queue_name) = recore.amqp.init_amqp(connect_params)
 
         # Check the calls we expect
         _cp = {}
@@ -109,7 +109,7 @@ class TestRecoreInit(TestCase):
         del _cp['queue']
         del _cp['port']
 
-        recore.utils.connect_mq.assert_called_once_with(**_cp)
+        recore.amqp.connect_mq.assert_called_once_with(**_cp)
         channel.queue_declare.assert_called_once_with(durable=True, queue=connect_params['QUEUE'])
 
         # Check results
@@ -132,13 +132,17 @@ class TestRecoreInit(TestCase):
         connection = mock.MagicMock('connection')
         queue_name = 'maiqueu'
 
+        # Fake callback for consumed messages
+        cb = lambda x: pass
+
         # Call the tested function
-        recore.watch_the_queue(channel, connection, queue_name)
+        recore.amqp.watch_the_queue(channel, connection, queue_name, callback=cb)
 
         # Verify calls are made
         channel.basic_consume.assert_called_once_with(
             recore.receive.receive,
             queue=queue_name,
-            no_ack=True)
+            no_ack=True,
+            callback=cb)
 
         channel.start_consuming.assert_called_once_with()

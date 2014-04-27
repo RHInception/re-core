@@ -84,21 +84,50 @@ class TestMongo(TestCase):
         collection.insert = mock.MagicMock(return_value=12345)
         db.__getitem__.return_value = collection
         project = 'testproject'
+        reply_queue = 'amq-fakequeue12345'
 
-        with mock.patch('recore.mongo.datetime.datetime') as (
-                mongo.datetime.datetime):
-            mongo.datetime.datetime = mock.MagicMock('datetime')
-            mongo.datetime.datetime.utcnow = mock.MagicMock(
-                return_value=UTCNOW)
+        with mock.patch('recore.mongo.lookup_project') as (
+                mongo.lookup_project):
+            _get = mock.MagicMock(return_value=[])
+            mongo.lookup_project = mock.MagicMock()
+            mongo.lookup_project.return_value = _get
 
-            mongo.initialize_state(db, project)
-            db['state'].insert.assert_called_once_with({
-                'project': project,
-                'step_log': [],
-                'created': UTCNOW,
-                'dynamic': {},
-                'running': True,
-            })
+            with mock.patch('recore.mongo.datetime.datetime') as (
+                    mongo.datetime.datetime):
+                mongo.datetime.datetime = mock.MagicMock('datetime')
+                mongo.datetime.datetime.utcnow = mock.MagicMock(
+                    return_value=UTCNOW)
+
+                mongo.initialize_state(db, project, {}, reply_queue)
+                db['state'].insert.assert_called_once_with({
+                    'active_step': {},
+                    'completed_steps': [],
+                    'created': UTCNOW,
+                    'dynamic': {},
+                    'project': project,
+                    'remaining_steps': _get,
+                    'reply_to': reply_queue,
+                })
+
+
+# expected call: insert({'project': 'testproject',
+#                        'running': True,
+#                        'dynamic': {},
+#                        'step_log': [],
+#                        'created': datetime.datetime(2014, 4, 27, 17, 19, 25, 850752)})
+
+# Actual call: insert(
+# {
+#     'active_step': {},
+#     'completed_steps': []
+#     'created': datetime.datetime(2014, 4, 27, 17, 19, 25, 850752),
+#     'dynamic': {},
+#     'project': 'testproject',
+#     'remaining_steps': <MagicMock name='mock.__getitem__().find_one().get()' id='49698832'>,
+#     'reply_to': None,
+# }
+# )
+
 
     def test_initialize_state_with_error(self):
         """
