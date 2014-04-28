@@ -15,9 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import recore.utils
-import recore.receive
 import logging
 import recore.mongo
+import recore.amqp
 import sys
 import pika.exceptions
 

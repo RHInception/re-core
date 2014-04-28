@@ -18,6 +18,7 @@ import logging
 import json
 import pika
 import recore.fsm
+import recore.job.create
 
 
 MQ_CONF = {}
@@ -100,8 +101,8 @@ def receive(ch, method, properties, body):
             # try:
             runner = recore.fsm.FSM(id)
             runner.start()
-            while runner.isAlive():
-                runner.join(0.3)
+            # while runner.isAlive():
+            #     runner.join(0.3)
             # except Exception, e:
             # notify.error(str(e))
 
