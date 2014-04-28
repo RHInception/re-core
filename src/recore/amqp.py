@@ -38,7 +38,8 @@ def init_amqp(mq):
 
     connect_string = "amqp://%s:******@%s:%s/%s" % (
         mq['NAME'], mq['SERVER'], mq['PORT'], mq['EXCHANGE'])
-    out.debug('Attemtping to open channel with connect string: %s' % connect_string)
+    out.debug('Attemtping to open channel with connect string: %s' % (
+        connect_string))
     recore.amqp.connection = pika.SelectConnection(parameters=params,
                                                    on_open_callback=on_open)
     return recore.amqp.connection
@@ -94,6 +95,7 @@ def receive(ch, method, properties, body):
         except KeyError, ke:
             notify.info("Missing an expected key in message: %s" % ke)
             out.error("Missing an expected key in message: %s" % ke)
+            # FIXME: eating errors can be dangerous! Double check this is OK.
             return
 
         if id:
@@ -105,7 +107,6 @@ def receive(ch, method, properties, body):
             #     runner.join(0.3)
             # except Exception, e:
             # notify.error(str(e))
-
     else:
         out.warn("Unknown routing key %s. Doing nothing ...")
         notify.info("IDK what this is: %s" % topic)
