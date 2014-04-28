@@ -48,21 +48,14 @@ class TestJobCreate(TestCase):
                 routing_key='replyto',
                 body='{"id": "1234567890"}')
 
-    # Code refacter broke this. Need to fix unit test
-    #
-    #
-    # def test_release_if_project_does_not_exist(self):
-    #     """
-    #     Verify create.release works properly if a project does not exist
-    #     """
+    def test_release_if_project_does_not_exist(self):
+        """
+        Verify create.release works properly if a project does not exist
+        """
 
-    #     with mock.patch(
-    #             'recore.job.create.recore.mongo') as create.recore.mongo:
-    #         create.recore.mongo.lookup_project = mock.MagicMock(
-    #             return_value={})
+        with mock.patch(
+                'recore.job.create.recore.mongo') as create.recore.mongo:
+            create.recore.mongo.lookup_project = mock.MagicMock(
+                return_value={})
 
-    #         assert create.release(channel, 'test', 'replyto', {}) is None
-    #         channel.basic_publish.assert_called_with(
-    #             exchange='',
-    #             routing_key='replyto',
-    #             body='{"id": null}')
+            assert create.release(channel, 'test', 'replyto', {}) is None
