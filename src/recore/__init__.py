@@ -106,15 +106,6 @@ def main(args):  # pragma: no cover
         connection.ioloop.stop()
         raise SystemExit(0)
 
-    # try:
-    #     recore.amqp.watch_the_queue(channel, connection, queue_name)
-    # except (
-    #         pika.exceptions.ProtocolSyntaxError,
-    #         pika.exceptions.AMQPError), ex:
-    #     out.fatal("Unknown issue watching the queue: %s" % ex)
-    #     notify.fatal("Unknown issue watching the queue: %s" % ex)
-    #     raise SystemExit(1)
-
     out.info('FSM fully initialized')
     notify.info('FSM fully initialized')
 

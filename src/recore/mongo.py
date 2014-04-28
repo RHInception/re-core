@@ -132,30 +132,6 @@ def initialize_state(d, project, dynamic={}):
     return id
 
 
-def mark_release_running(d, c_id, running=True):
-    """`d` is a mongodb database, `c_id` is the ObjectID, and running
-is a boolean noting if the release is running."""
-    out = logging.getLogger('recore')
-    out.debug("updating for id: %s" % c_id)
-    _id = {'_id': ObjectId(str(c_id))}
-    _update = {
-        '$set': {
-            'running': running,
-        },
-    }
-    try:
-        id = d['state'].update(_id, _update)
-        if id:
-            out.info("Updated running status to %s" % c_id)
-        else:
-            out.error("Failed to update running status with id: %s" % c_id)
-    except pymongo.errors.PyMongoError, pmex:
-        out.error(
-            "Unable to update release running state with %s. "
-            "Propagating PyMongo error: %s" % (_update, pmex))
-        raise pmex
-
-
 def escape_credentials(n, p):
     """Return the RFC 2396 escaped version of name `n` and password `p` in
 a 2-tuple"""

@@ -18,7 +18,6 @@ import mock
 
 from . import TestCase, unittest
 
-from recore.job import step
 
 # Mocks
 CORR_ID = 12345
@@ -26,21 +25,21 @@ PROPERTIES = pika.spec.BasicProperties(correlation_id=CORR_ID)
 channel = mock.MagicMock()
 
 
-class TestJobStep(TestCase):
+# class TestJobStep(TestCase):
 
-    def tearDown(self):
-        """
-        Reset mocks.
-        """
-        channel.reset_mock()
+#     def tearDown(self):
+#         """
+#         Reset mocks.
+#         """
+#         channel.reset_mock()
 
-    def test_step(self):
-        """
-        Verify step.run works when everything is perfect
-        """
-        assert step.run(channel, 'test', PROPERTIES.correlation_id) is None
-        call_args = channel.basic_publish.call_args[1]
-        assert call_args['body'] == '{"project": "test", "params": {}}'
-        assert call_args['exchange'] == 're'
-        assert call_args['routing_key'] == 'plugin.shexec.start'
-        assert call_args['properties'].correlation_id == CORR_ID
+#     def test_step(self):
+#         """
+#         Verify step.run works when everything is perfect
+#         """
+#         assert step.run(channel, 'test', PROPERTIES.correlation_id) is None
+#         call_args = channel.basic_publish.call_args[1]
+#         assert call_args['body'] == '{"project": "test", "params": {}}'
+#         assert call_args['exchange'] == 're'
+#         assert call_args['routing_key'] == 'plugin.shexec.start'
+#         assert call_args['properties'].correlation_id == CORR_ID
