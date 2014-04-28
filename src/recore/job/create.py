@@ -38,15 +38,12 @@ def release(ch, project, reply_to, dynamic):
 Reference the project name against the database to retrieve a list of
 release steps to execute.
 
-For now we're just going to pretend we did that part.
-
 We then generate a correlation_id by inserting a new document into the
 'state' collection. The correlation_id is equivalent to the
 automatically generated '_id' property of this document.
 
-In the future that ID will be passed to the workers. For now we will
-just return it.
-    """
+Once we have a state document we are ready to initialize another FSM
+instance with that document ID."""
     out = logging.getLogger('recore')
     notify = logging.getLogger('recore.stdout')
     out.debug("Checking mongo for info on project %s" % project)
