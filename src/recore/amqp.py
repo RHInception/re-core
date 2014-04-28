@@ -18,7 +18,6 @@ import logging
 import json
 import pika
 import recore.fsm
-import threading
 
 
 MQ_CONF = {}
@@ -35,12 +34,14 @@ def init_amqp(mq):
     params = pika.ConnectionParameters(
         host=str(mq['SERVER']),
         credentials=creds)
-    out.debug('Attemtping to open channel...')
+
     connect_string = "amqp://%s:******@%s:%s/%s" % (
         mq['NAME'], mq['SERVER'], mq['PORT'], mq['EXCHANGE'])
+    out.debug('Attemtping to open channel with connect string: %s' % connect_string)
     recore.amqp.connection = pika.SelectConnection(parameters=params,
                                                    on_open_callback=on_open)
     return recore.amqp.connection
+
 
 def on_open(connection):
     """
@@ -61,23 +62,8 @@ def on_channel_open(channel):
     consumer_tag = channel.basic_consume(
         receive,
         queue=MQ_CONF['QUEUE'])
+    return consumer_tag
 
-
-# def watch_the_queue(channel, connection, queue_name):
-#     """Begin consuming messages `queue_name` on the bus. Set our default
-# callback handler
-#     """
-#     channel.basic_consume(receive,
-#                           queue=queue_name)
-#     try:
-#         notify = logging.getLogger('recore.stdout')
-#         notify.info('FSM online and listening for messages')
-#         out = logging.getLogger('recore')
-#         out.debug('Consuming messages from queue: %s' % queue_name)
-#     except KeyboardInterrupt:
-#         channel.close()
-#         connection.close()
-#         pass
 
 def receive(ch, method, properties, body):
     """
