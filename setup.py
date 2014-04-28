@@ -13,36 +13,22 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-"""
-Build script.
-"""
 
-import os.path
+import os
+import sys
 
-from pip.req import parse_requirements
-from setuptools import setup, find_packages
+from distutils.core import setup
 
-install_reqs = parse_requirements('requirements.txt')
-reqs = [str(ir.req) for ir in install_reqs]
-
-
-setup(
-    name='recore',
-    version='0.0.1',
-    author='See AUTHORS',
-    url='https://github.com/RHInception/re-core',
-    license='AGPLv3',
-    zip_safe=False,
-    package_dir={
-        'recore': os.path.join('src', 'recore')
-    },
-    packages=find_packages('src'),
-    install_requires=reqs,
-    classifiers=[
-        ('License :: OSI Approved :: GNU Affero General Public '
-         'License v3 or later (AGPLv3+)'),
-        'Development Status :: 5 - Production/Stable',
-        'Programming Language :: Python',
-    ],
-    scripts=['bin/re-core']
+setup(name='re-core',
+      version='0.0.2',
+      description='',
+      author='See AUTHORS file',
+      author_email='inception@redhat.com',
+      url='https://github.com/rhinception/re-core',
+      license='AGPLv3',
+      package_dir={ 'recore': 'src/recore' },
+      packages=['recore', 'recore.job', 'recore.fsm'],
+      scripts=[
+         'bin/re-core',
+      ]
 )

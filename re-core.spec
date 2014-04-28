@@ -12,12 +12,12 @@ Release: 1%{?dist}
 Group: Applications/System
 License: AGPLv3
 Source0: %{name}-%{version}.tar.gz
-#Url: https://github.com/tbielawa/bitmath
+Url: https://github.com/rhinception/re-core
 
 BuildArch: noarch
 BuildRequires: python2-devel
-#BuildRequires: python-nose
-#%{?el6:BuildRequires: python-unittest2}
+# BuildRequires: python-nose
+# %{?el6:BuildRequires: python-unittest2}
 
 %description
 This is the core component of the Inception Release Engine. The core
@@ -41,7 +41,7 @@ release step. Execution is delegated to the worker component.
 %{__python2} setup.py install -O1 --root=$RPM_BUILD_ROOT --record=re-core-files.txt
 
 %files -f re-core-files.txt
-%dir %{python2_sitelib}/%{_short_name}
+%dir %{python2_sitelib}/%{name}
 %{_bindir}/re-core
 %doc README.md LICENSE
 

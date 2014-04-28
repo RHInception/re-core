@@ -23,6 +23,8 @@
 
 
 NAME := re-core
+RPMSPECDIR := .
+RPMSPEC := $(RPMSPECDIR)/re-core.spec
 
 sdist: clean
 	python setup.py sdist
@@ -54,3 +56,33 @@ pyflakes:
 	@echo "# Note: most import errors may be ignored"
 	@echo "#############################################"
 	-pyflakes src/recore
+
+rpmcommon: sdist
+	@mkdir -p rpm-build
+	@cp dist/*.gz rpm-build/
+
+srpm: rpmcommon
+	@rpmbuild --define "_topdir %(pwd)/rpm-build" \
+	--define "_builddir %{_topdir}" \
+	--define "_rpmdir %{_topdir}" \
+	--define "_srcrpmdir %{_topdir}" \
+	--define "_specdir $(RPMSPECDIR)" \
+	--define "_sourcedir %{_topdir}" \
+	-bs $(RPMSPEC)
+	@echo "#############################################"
+	@echo "Re-Core SRPM is built:"
+	@find rpm-build -maxdepth 2 -name 're-core*src.rpm' | awk '{print "    " $$1}'
+	@echo "#############################################"
+
+rpm: rpmcommon
+	@rpmbuild --define "_topdir %(pwd)/rpm-build" \
+	--define "_builddir %{_topdir}" \
+	--define "_rpmdir %{_topdir}" \
+	--define "_srcrpmdir %{_topdir}" \
+	--define "_specdir $(RPMSPECDIR)" \
+	--define "_sourcedir %{_topdir}" \
+	-ba $(RPMSPEC)
+	@echo "#############################################"
+	@echo "Re-Core RPMs are built:"
+	@find rpm-build -maxdepth 2 -name 're-core*.rpm' | awk '{print "    " $$1}'
+	@echo "#############################################"

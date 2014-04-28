@@ -15,7 +15,7 @@ release step. Execution is delegated to the **worker** component.
 DEPENDENCIES
 ------------
 
-State is maintained both in-memory, and persistently in **MongoDB**.
+State is maintained persistently in **MongoDB**.
 
 The core communicates over a **RabbitMQ** message bus. This is how new
 job orders are received, tasks are delegated, and workers communicate
