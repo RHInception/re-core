@@ -49,31 +49,24 @@ just return it.
     """
     out = logging.getLogger('recore')
     notify = logging.getLogger('recore.stdout')
-    out.info("Checking mongo for info on project %s" % project)
-    notify.info(
+    out.debug("Checking mongo for info on project %s" % project)
+    notify.debug(
         "new job submitted from rest for %s. Need to look it up "
         "first in mongo" % project)
     mongo_db = recore.mongo.database
     project_exists = recore.mongo.lookup_project(mongo_db, project)
 
     out.debug("Mongo query to get info on %s finished" % project)
-    notify.info("looked up project: %s" % project)
-
-    # Set up the FSM <-> worker queue
-    result = ch.queue_declare(queue='',
-                              durable=False)
-
-    fsm_worker_reply = result.method.queue
-
-    notify.info("Temp queue created for worker <-> fsm comm.: %s" % fsm_worker_reply)
+    notify.debug("looked up project: %s" % project)
 
     if project_exists:
         # Initialize state and include the dynamic items
-        id = str(recore.mongo.initialize_state(mongo_db, project, dynamic, fsm_worker_reply))
-        out.info("State created for '%s' in mongo with id: %s" % (project, id))
+        id = str(recore.mongo.initialize_state(mongo_db, project, dynamic))
+        out.debug("State created for '%s' in mongo with id: %s" % (project, id))
     else:
-        out.info("Project %s does not exists in mongo" % project)
+        out.error("Project %s does not exists in mongo" % project)
         id = None
+        return id
 
     body = recore.utils.create_json_str({'id': id})
 

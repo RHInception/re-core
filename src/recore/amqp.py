@@ -15,74 +15,113 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+import json
 import pika
+import recore.fsm
+import threading
+
 
 MQ_CONF = {}
 connection = None
+out = logging.getLogger('recore.amqp')
 
 
 def init_amqp(mq):
     """Open a channel to our AMQP server"""
     import recore.amqp
     recore.amqp.MQ_CONF = mq
-    out = logging.getLogger('recore.amqp')
-    # notify = logging.getLogger('recore.stdout')
 
-    (channel, connection) = connect_mq(
-        name=mq['NAME'],
-        password=mq['PASSWORD'],
-        server=mq['SERVER'],
-        exchange=mq['EXCHANGE'])
+    creds = pika.credentials.PlainCredentials(mq['NAME'], mq['PASSWORD'])
+    params = pika.ConnectionParameters(
+        host=str(mq['SERVER']),
+        credentials=creds)
+    out.debug('Attemtping to open channel...')
     connect_string = "amqp://%s:******@%s:%s/%s" % (
         mq['NAME'], mq['SERVER'], mq['PORT'], mq['EXCHANGE'])
-    out.debug("Opened AMQP connection: %s" % connect_string)
+    recore.amqp.connection = pika.SelectConnection(parameters=params,
+                                                   on_open_callback=on_open)
+    return recore.amqp.connection
 
-    receive_as = mq['QUEUE']
-    result = channel.queue_declare(durable=True, queue=receive_as)
-    queue_name = result.method.queue
-    recore.amqp.connection = connection
-    return (channel, connection, queue_name)
-
-
-def connect_mq(name=None, password=None, server=None, exchange=None, **kwargs):
+def on_open(connection):
     """
-    Return channel and connection objects hooked into our message bus
-
-    `name` - Username to connect with
-    `password` - Password to authenticate with
-    `server` - Hostname of the actual message bus
-    `exchange` - Exchange to connect to on the bus
-
-    Returns a 2-tuple of `channel` and `connection` objects
+    Call back when a connection is opened.
     """
-    out = logging.getLogger('recore')
-    creds = pika.credentials.PlainCredentials(name, password)
-    connection = pika.BlockingConnection(pika.ConnectionParameters(
-        host=str(server),
-        credentials=creds))
-    out.debug("Connection to MQ opened.")
-    channel = connection.channel()
+    out.debug("Opened AMQP connection")
+    connection.channel(on_channel_open)
+
+
+def on_channel_open(channel):
+    """
+    Call back when a channel is opened.
+    """
     out.debug("MQ channel opened. Declaring exchange ...")
-    channel.exchange_declare(exchange=exchange,
+    channel.exchange_declare(exchange=MQ_CONF['EXCHANGE'],
                              durable=True,
                              exchange_type='topic')
-    out.debug("Exchange declared.")
-    return (channel, connection)
+    consumer_tag = channel.basic_consume(
+        receive,
+        queue=MQ_CONF['QUEUE'])
 
 
-def watch_the_queue(channel, connection, queue_name, callback=None):
-    """Begin consuming messages `queue_name` on the bus. Set our default
-callback handler
+# def watch_the_queue(channel, connection, queue_name):
+#     """Begin consuming messages `queue_name` on the bus. Set our default
+# callback handler
+#     """
+#     channel.basic_consume(receive,
+#                           queue=queue_name)
+#     try:
+#         notify = logging.getLogger('recore.stdout')
+#         notify.info('FSM online and listening for messages')
+#         out = logging.getLogger('recore')
+#         out.debug('Consuming messages from queue: %s' % queue_name)
+#     except KeyboardInterrupt:
+#         channel.close()
+#         connection.close()
+#         pass
+
+def receive(ch, method, properties, body):
     """
-    channel.basic_consume(callback,
-                          queue=queue_name)
-    try:
-        notify = logging.getLogger('recore.stdout')
-        notify.info('FSM online and listening for messages')
-        channel.start_consuming()
-        out = logging.getLogger('recore')
-        out.debug('Consuming messages from queue: %s' % queue_name)
-    except KeyboardInterrupt:
-        channel.close()
-        connection.close()
-        pass
+    Callback for watching the FSM queue
+    """
+    out = logging.getLogger('recore')
+    notify = logging.getLogger('recore.stdout')
+    msg = json.loads(body)
+    topic = method.routing_key
+    out.debug("Message: %s" % msg)
+    ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    if topic == 'job.create':
+        id = None
+        try:
+            # We need to get the name of the temporary
+            # queue to respond back on.
+            notify.info("new job create for: %s" % msg['project'])
+            out.info(
+                "New job requested, starting release "
+                "process for %s ..." % msg["project"])
+            notify.debug("Job message: %s" % msg)
+            reply_to = properties.reply_to
+
+            id = recore.job.create.release(
+                ch, msg['project'], reply_to, msg['dynamic'])
+        except KeyError, ke:
+            notify.info("Missing an expected key in message: %s" % ke)
+            out.error("Missing an expected key in message: %s" % ke)
+            return
+
+        if id:
+            # Skip this try/except until we work all the bugs out of the FSM
+            # try:
+            runner = recore.fsm.FSM(id)
+            runner.start()
+            while runner.isAlive():
+                runner.join(0.3)
+            # except Exception, e:
+            # notify.error(str(e))
+
+    else:
+        out.warn("Unknown routing key %s. Doing nothing ...")
+        notify.info("IDK what this is: %s" % topic)
+
+    notify.info("end receive() routine")
+    out.debug("end receive() routine")

@@ -18,7 +18,6 @@ from bson.objectid import ObjectId
 import json
 from datetime import datetime as dt
 import recore.mongo
-import recore.job.step
 import recore.amqp
 import logging
 import threading
@@ -52,7 +51,7 @@ a project's release steps."""
         self.ch = None
         self.conn = None
         self.state_id = state_id
-        self._id = ObjectId(self.state_id)
+        self._id = {'_id': ObjectId(self.state_id)}
         self.state = {}
         self.dynamic = {}
         self.reply_queue = None
@@ -63,7 +62,7 @@ a project's release steps."""
         except pika.exceptions.ConnectionClosed:
             # Don't know why, but pika likes to raise this exception
             # when we intentionally close a connection...
-            self.app_logger.debug("Closed AMQP connection" % self.state_id)
+            self.app_logger.debug("Closed AMQP connection")
         self.app_logger.info("Terminating")
         return True
 
@@ -101,8 +100,7 @@ a project's release steps."""
                               body=json.dumps(msg),
                               properties=props)
 
-        self.app_logger.info("Sent message with topic '%s' and body: %s" %
-                             (plugin_queue, str(json.dumps(msg))))
+        self.app_logger.info("Sent plugin new job details")
 
         # Begin consuming from reply_queue
         self.app_logger.debug("Waiting for plugin to update us")
@@ -127,7 +125,7 @@ a project's release steps."""
         self.app_logger.debug("Got completed/errored message back from the worker")
 
         msg = json.loads(body)
-        self.app_logger.info(json.dumps(msg))
+        self.app_logger.debug(json.dumps(msg))
 
         # Remove from active step, push onto completed steps
         # - Reflect in MongoDB
@@ -162,7 +160,7 @@ a project's release steps."""
                 'remaining_steps': self.remaining
             }
         }
-        return self.update_state(_update_state)
+        self.update_state(_update_state)
 
     def update_state(self, new_state):
         """
@@ -218,6 +216,10 @@ a project's release steps."""
                                  durable=True,
                                  exchange_type='topic')
         self.app_logger.debug("Exchange declared.")
+        result = channel.queue_declare(queue='',
+                                       exclusive=True,
+                                       durable=False)
+        self.reply_queue = result.method.queue
         return (channel, connection)
 
     def _setup(self):
@@ -237,7 +239,6 @@ a project's release steps."""
 
         self.project = self.state['project']
         self.dynamic.update(self.state['dynamic'])
-        self.reply_queue = self.state['reply_to']
         self.completed = self.state['completed_steps']
         self.active = self.state['active_step']
         self.remaining = self.state['remaining_steps']

@@ -86,7 +86,7 @@ MongoDB.
     # collection
     states = database['state']
     out = logging.getLogger('recore.stdout')
-    out.info("Looking up state for %s" % ObjectId(str(c_id)))
+    out.debug("Looking up state for %s" % ObjectId(str(c_id)))
     # findOne state document with _id of `c_id`. If a document is
     # found, returns a hash, if no document is found, returns None
     project_state = states.find_one({'_id': ObjectId(str(c_id))})
@@ -95,7 +95,7 @@ MongoDB.
     return project_state
 
 
-def initialize_state(d, project, dynamic={}, reply_to=None):
+def initialize_state(d, project, dynamic={}):
     """Initialize the state of a given project release"""
     # Just record the name now and insert an empty array to record the
     # result of steps. Oh, and when it started. Maybe we'll even add
@@ -117,7 +117,6 @@ def initialize_state(d, project, dynamic={}, reply_to=None):
         'created': datetime.datetime.utcnow(),
         'project': project,
         'dynamic': dynamic,
-        'reply_to': reply_to,
         'remaining_steps': project_steps
     })
 
@@ -153,30 +152,6 @@ is a boolean noting if the release is running."""
     except pymongo.errors.PyMongoError, pmex:
         out.error(
             "Unable to update release running state with %s. "
-            "Propagating PyMongo error: %s" % (_update, pmex))
-        raise pmex
-
-
-def update_state(d, c_id, state):
-    """`d` is a mongodb database, `c_id` is the ObjectID, and state is a
-hash we will push onto the `step_log`."""
-    out = logging.getLogger('recore')
-    out.debug("updating for id: %s" % c_id)
-    _id = {'_id': ObjectId(str(c_id))}
-    _update = {
-        '$push': {
-            'step_log': state
-        }
-    }
-    try:
-        id = d['state'].update(_id, _update)
-        if id:
-            out.info("Added state record to %s" % c_id)
-        else:
-            out.error("Failed to update record with id: %s" % c_id)
-    except pymongo.errors.PyMongoError, pmex:
-        out.error(
-            "Unable to update state with %s. "
             "Propagating PyMongo error: %s" % (_update, pmex))
         raise pmex
 

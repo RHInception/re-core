@@ -35,7 +35,7 @@ def start_logging(log_file, log_level):
 
     # And now the stdout logging
     out2 = logging.getLogger('recore.stdout')
-    out2.setLevel('DEBUG')
+    out2.setLevel(logging.getLevelName(log_level))
     lh2 = logging.StreamHandler(sys.stdout)
     lh2.setFormatter(logging.Formatter(
         '%(asctime)s - %(module)s:%(funcName)s:%(lineno)d - %(levelname)s - %(message)s'))
@@ -84,7 +84,8 @@ def main(args):  # pragma: no cover
         raise SystemExit(1)
 
     try:
-        (channel, connection, queue_name) = recore.amqp.init_amqp(config['MQ'])
+        connection = recore.amqp.init_amqp(config['MQ'])
+        connection.ioloop.start()
     except KeyError, ke:
         out.fatal("Missing a required key in MQ config: %s" % ke)
         notify.fatal("Missing a required key in MQ config: %s" % ke)
@@ -99,14 +100,20 @@ def main(args):  # pragma: no cover
         out.fatal("Unknown issue connecting to AMQP: %s" % ex)
         notify.fatal("Unknown issue connecting to AMQP: %s" % ex)
         raise SystemExit(1)
-    try:
-        recore.amqp.watch_the_queue(channel, connection, queue_name, callback=recore.receive.receive)
-    except (
-            pika.exceptions.ProtocolSyntaxError,
-            pika.exceptions.AMQPError), ex:
-        out.fatal("Unknown issue watching the queue: %s" % ex)
-        notify.fatal("Unknown issue watching the queue: %s" % ex)
-        raise SystemExit(1)
+    except KeyboardInterrupt:
+        out.info("KeyboardInterrupt sent.")
+        notify.info("Keyboard Interrupt sent.")
+        connection.ioloop.stop()
+        raise SystemExit(0)
+
+    # try:
+    #     recore.amqp.watch_the_queue(channel, connection, queue_name)
+    # except (
+    #         pika.exceptions.ProtocolSyntaxError,
+    #         pika.exceptions.AMQPError), ex:
+    #     out.fatal("Unknown issue watching the queue: %s" % ex)
+    #     notify.fatal("Unknown issue watching the queue: %s" % ex)
+    #     raise SystemExit(1)
 
     out.info('FSM fully initialized')
     notify.info('FSM fully initialized')
