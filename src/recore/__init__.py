@@ -29,7 +29,7 @@ def start_logging(log_file, log_level):
     log_handler = logging.FileHandler(log_file)
     log_handler.setLevel(logging.getLevelName(log_level))
     log_handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(module)s - %(levelname)s - %(message)s'))
+        '%(asctime)s - %(module)s:%(funcName)s:%(lineno)d - %(levelname)s - %(message)s'))
     output.addHandler(log_handler)
     output.debug("initialized logger")
 
@@ -38,7 +38,7 @@ def start_logging(log_file, log_level):
     out2.setLevel('DEBUG')
     lh2 = logging.StreamHandler(sys.stdout)
     lh2.setFormatter(logging.Formatter(
-        '%(module)s - %(levelname)s - %(message)s'))
+        '%(asctime)s - %(module)s:%(funcName)s:%(lineno)d - %(levelname)s - %(message)s'))
     out2.addHandler(lh2)
     out2.debug("initialized stdout logger")
 

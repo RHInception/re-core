@@ -75,8 +75,7 @@ def watch_the_queue(channel, connection, queue_name, callback=None):
 callback handler
     """
     channel.basic_consume(callback,
-                          queue=queue_name,
-                          no_ack=True)
+                          queue=queue_name)
     try:
         notify = logging.getLogger('recore.stdout')
         notify.info('FSM online and listening for messages')

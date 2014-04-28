@@ -29,6 +29,9 @@ def receive(ch, method, properties, body):
     topic = method.routing_key
     out.info('Received a new message via routing key %s' % topic)
     out.debug("Message: %s" % msg)
+
+    ch.basic_ack(delivery_tag=method.delivery_tag)
+
     ##################################################################
     # NEW JOB
     #
@@ -62,7 +65,9 @@ def receive(ch, method, properties, body):
             # Skip this try/except until we work all the bugs out of the FSM
             # try:
             runner = recore.fsm.FSM(id)
-            runner.run()
+            runner.start()
+            while runner.isAlive():
+                runner.join(0.3)
             # except Exception, e:
             # notify.error(str(e))
 
