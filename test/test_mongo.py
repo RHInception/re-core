@@ -76,61 +76,37 @@ class TestMongo(TestCase):
         assert mongo.lookup_project({}, "project") == {}
 
 
-    # This broke during FSM refactoring. Need to fix this unit test.
-    #
-    #
-    # def test_initialize_state(self):
-    #     """
-    #     Make sure that creating the initial state uses proper data
-    #     """
-    #     db = mock.MagicMock()
-    #     collection = mock.MagicMock()
-    #     collection.insert = mock.MagicMock(return_value=12345)
-    #     db.__getitem__.return_value = collection
-    #     project = 'testproject'
-    #     reply_queue = 'amq-fakequeue12345'
+    def test_initialize_state(self):
+        """
+        Make sure that creating the initial state uses proper data
+        """
+        db = mock.MagicMock()
+        collection = mock.MagicMock()
+        collection.insert = mock.MagicMock(return_value=12345)
+        db.__getitem__.return_value = collection
+        project = 'testproject'
 
-    #     with mock.patch('recore.mongo.lookup_project') as (
-    #             mongo.lookup_project):
-    #         _get = mock.MagicMock(return_value=[])
-    #         mongo.lookup_project = mock.MagicMock()
-    #         mongo.lookup_project.return_value = _get
+        with mock.patch('recore.mongo.lookup_project') as (
+                mongo.lookup_project):
+            mongo.lookup_project = mock.MagicMock()
+            mongo.lookup_project.return_value.get.return_value = []
 
-    #         with mock.patch('recore.mongo.datetime.datetime') as (
-    #                 mongo.datetime.datetime):
-    #             mongo.datetime.datetime = mock.MagicMock('datetime')
-    #             mongo.datetime.datetime.utcnow = mock.MagicMock(
-    #                 return_value=UTCNOW)
+            with mock.patch('recore.mongo.datetime.datetime') as (
+                    mongo.datetime.datetime):
+                mongo.datetime.datetime = mock.MagicMock('datetime')
+                mongo.datetime.datetime.utcnow = mock.MagicMock(
+                    return_value=UTCNOW)
 
-    #             mongo.initialize_state(db, project, dynamic={})
-    #             db['state'].insert.assert_called_once_with({
-    #                 'active_step': {},
-    #                 'completed_steps': [],
-    #                 'created': UTCNOW,
-    #                 'dynamic': {},
-    #                 'project': project,
-    #                 'remaining_steps': _get,
-    #                 'reply_to': reply_queue,
-    #             })
-
-
-# expected call: insert({'project': 'testproject',
-#                        'running': True,
-#                        'dynamic': {},
-#                        'step_log': [],
-#                        'created': datetime.datetime(2014, 4, 27, 17, 19, 25, 850752)})
-
-# Actual call: insert(
-# {
-#     'active_step': {},
-#     'completed_steps': []
-#     'created': datetime.datetime(2014, 4, 27, 17, 19, 25, 850752),
-#     'dynamic': {},
-#     'project': 'testproject',
-#     'remaining_steps': <MagicMock name='mock.__getitem__().find_one().get()' id='49698832'>,
-#     'reply_to': None,
-# }
-# )
+                mongo.initialize_state(db, project, dynamic={})
+                db['state'].insert.assert_called_once_with({
+                    'active_step': {},
+                    'completed_steps': [],
+                    'created': UTCNOW,
+                    'dynamic': {},
+                    'project': project,
+                    'remaining_steps': [],
+                    'reply_to': None,
+                })
 
 
     def test_initialize_state_with_error(self):
@@ -149,49 +125,6 @@ class TestMongo(TestCase):
         self.assertRaises(
             pymongo.errors.PyMongoError, mongo.initialize_state, db, project)
 
-
-    # Broke this in the refacter. Need to fix this unit test
-    #
-    #
-    # def test_mark_release_running(self):
-    #     """
-    #     Verify that mark_release_running inserts the proper information
-    #     """
-    #     db = mock.MagicMock()
-    #     collection = mock.MagicMock()
-    #     collection.update = mock.MagicMock(mock.MagicMock(return_value=12345))
-    #     db.__getitem__.return_value = collection
-    #     objectid = bson.ObjectId()
-
-    #     for status in (True, False):
-    #         mongo.mark_release_running(db, objectid, status)
-
-    #         db['state'].update.assert_called_once_with(
-    #             {'_id': objectid},
-    #             {'$set': {'running': status}})
-    #         db['state'].update.reset_mock()
-
-
-
-    # Same as the last one. Need to fix this unit test
-    #
-    #
-    # def test_mark_release_running_with_error(self):
-    #     """
-    #     Make sure that if mongo errors out while marking a release
-    #     we are notified with the proper exception
-    #     """
-    #     db = mock.MagicMock()
-    #     collection = mock.MagicMock()
-    #     collection.update = mock.MagicMock(
-    #         side_effect=pymongo.errors.PyMongoError('test error'))
-    #     db.__getitem__.return_value = collection
-    #     objectid = bson.ObjectId()
-
-    #     # We should get a PyMongoError
-    #     self.assertRaises(
-    #         pymongo.errors.PyMongoError,
-    #         mongo.mark_release_running, db, objectid, True)
 
     # def test_update_state(self):
     #     """
