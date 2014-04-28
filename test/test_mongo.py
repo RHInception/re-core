@@ -124,39 +124,3 @@ class TestMongo(TestCase):
         # We should get a PyMongoError
         self.assertRaises(
             pymongo.errors.PyMongoError, mongo.initialize_state, db, project)
-
-
-    # def test_update_state(self):
-    #     """
-    #     Verify that update_state inserts the proper information
-    #     """
-    #     db = mock.MagicMock()
-    #     collection = mock.MagicMock()
-    #     collection.update = mock.MagicMock(mock.MagicMock(return_value=12345))
-    #     db.__getitem__.return_value = collection
-    #     objectid = bson.ObjectId()
-
-    #     for state in ('completed', 'failed'):
-    #         mongo.update_state(db, objectid, state)
-
-    #         db['state'].update.assert_called_once_with(
-    #             {'_id': objectid},
-    #             {'$push': {'step_log': state}})
-    #         db['state'].update.reset_mock()
-
-    # def test_update_state_with_error(self):
-    #     """
-    #     Make sure that if mongo errors out while updating a state
-    #     we are notified with the proper exception
-    #     """
-    #     db = mock.MagicMock()
-    #     collection = mock.MagicMock()
-    #     collection.update = mock.MagicMock(
-    #         side_effect=pymongo.errors.PyMongoError('test error'))
-    #     db.__getitem__.return_value = collection
-    #     objectid = bson.ObjectId()
-
-    #     # We should get a PyMongoError
-    #     self.assertRaises(
-    #         pymongo.errors.PyMongoError,
-    #         mongo.update_state, db, objectid, 'completed')
