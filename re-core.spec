@@ -4,9 +4,11 @@
 %{!?python2_sitearch: %global python2_sitearch %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
 %endif
 
+%global _pkg_name recore
+
 Name: re-core
 Summary: FSM of the Inception Release Engine
-Version: 0.0.1
+Version: 0.0.2
 Release: 1%{?dist}
 
 Group: Applications/System
@@ -41,10 +43,13 @@ release step. Execution is delegated to the worker component.
 %{__python2} setup.py install -O1 --root=$RPM_BUILD_ROOT --record=re-core-files.txt
 
 %files -f re-core-files.txt
-%dir %{python2_sitelib}/%{name}
+%dir %{python2_sitelib}/%{_pkg_name}
 %{_bindir}/re-core
-%doc README.md LICENSE
+%doc README.md LICENSE AUTHORS
 
 %changelog
+* Mon Apr 28 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.2-1
+- Now with proper working state machine
+
 * Tue Apr  8 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.1-1
 - First release
