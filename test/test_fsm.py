@@ -347,7 +347,7 @@ class TestFsm(TestCase):
         consume_errored = [
             mock.Mock(name="method_mocked"),
             mock.Mock(name="properties_mocked"),
-            json.dumps(msg_completed)
+            json.dumps(msg_errored)
         ]
 
         # First check in the case where the job completed
@@ -356,9 +356,9 @@ class TestFsm(TestCase):
         f._run.assert_called_once_with()
 
         # Check the case where the job ended not "completed"
-        result = f.on_ended(f.ch, *consume_errored)
         f.move_active_to_completed.reset_mock()
         f._run.reset_mock()
+        result = f.on_ended(f.ch, *consume_errored)
 
         self.assertFalse(f.move_active_to_completed.called)
         self.assertFalse(f._run.called)
