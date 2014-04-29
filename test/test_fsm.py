@@ -254,3 +254,37 @@ class TestFsm(TestCase):
             us.assert_called_once_with(_update_state)
             self.assertEqual(f.active, None)
             self.assertEqual(f.completed, [active_step])
+
+    @mock.patch.object(FSM, 'on_started')
+    @mock.patch.object(FSM, 'dequeue_next_active_step')
+    @mock.patch.object(FSM, '_setup')
+    def test__run(self, setup, dequeue, on_started):
+        """The _run() method can send a proper message to a worker"""
+        f = FSM(state_id)
+        f.reply_queue = temp_queue
+
+        f.project = "mock tests"
+        f.dynamic = {}
+        f.active = {
+            'plugin': 'fake',
+            'parameters': {'no': 'parameters'}
+        }
+        consume_iter = [
+            (mock.Mock(name="method_mocked"),
+             mock.Mock(name="properties_mocked"),
+             mock.Mock(name="body_mocked"))
+         ]
+
+        publish = mock.Mock()
+        channel = mock.Mock()
+        channel.consume.return_value = iter(consume_iter)
+        channel.basic_publish = publish
+        f.ch = channel
+
+        f._run()
+
+        setup.assert_called_once_with()
+        dequeue.assert_called_once_with()
+        f.ch.basic_ack.assert_called_once_with(consume_iter[0][0].delivery_tag)
+        f.ch.cancel.assert_called_once_with()
+        on_started.assert_called_once_with(f.ch, *consume_iter[0])
