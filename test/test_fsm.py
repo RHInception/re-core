@@ -13,14 +13,16 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import mock
 from . import TestCase, unittest
 from recore import mongo
-import pymongo
+from recore import amqp
 from recore.fsm import FSM
+import mock
 import pika
 import pika.exceptions
+import pymongo
 
+state_id = "123456abcdef"
 _state = {
     'project': 'example project',
     'dynamic': {},
@@ -30,11 +32,35 @@ _state = {
 }
 
 
-class TestMongo(TestCase):
+class TestFsm(TestCase):
+    @mock.patch('recore.fsm.pika.PlainCredentials')
+    @mock.patch('recore.fsm.pika.channel.Channel')
+    @mock.patch('recore.fsm.pika.BlockingConnection')
+    @mock.patch('recore.fsm.recore.amqp.MQ_CONF')
+    def test__connect_mq(self, mq_conf, connection, channel, creds):
+        """FSM connecting to AMQP sets its reply_queue attribute"""
+        mq_conf = {
+            'NAME': 'user',
+            'PASSWORD': 'pass',
+            'SERVER': '127.0.0.1',
+            'EXCHANGE': 'foochange'
+        }
+        temp_queue = 'amqp-test_queue123'
+        creds.return_value = mock.MagicMock(spec=pika.credentials.PlainCredentials, name="mocked creds")
+        mocked_conn = mock.MagicMock(spec=pika.connection.Connection, name="mocked connection")
+        mocked_channel = mock.MagicMock(spec=pika.channel.Channel, name="mocked channel")
+        channel.return_value = mocked_channel
+        channel.queue_declare.return_value.method.queue = temp_queue
+        mocked_conn.channel.return_value = channel
+        connection.return_value = mocked_conn
+
+        f = FSM(state_id)
+        (ch, conn) = f._connect_mq()
+        self.assertEqual(f.reply_queue, temp_queue, msg="Expected %s for reply_queue, instead got %s" %
+                         (temp_queue, f.reply_queue))
+
     def test__setup(self):
         """Setup works with an existing state document"""
-        state_id = "123456abcdef"
-
         f = FSM(state_id)
         # An AMQP connection hasn't been made yet
         f._connect_mq = mock.MagicMock(return_value=(mock.Mock(pika.channel.Channel),
@@ -54,8 +80,6 @@ class TestMongo(TestCase):
 
     def test__setup_lookup_state_none(self):
         """if lookup_state returns None then a LookupError is raised"""
-        state_id = "123456abcdef"
-
         f = FSM(state_id)
 
         with mock.patch('recore.mongo.database') as (
@@ -73,8 +97,6 @@ class TestMongo(TestCase):
 
     def test__setup_amqp_connect_fails(self):
         """_setup raises exception if amqp connection can't be made"""
-        state_id = "123456abcdef"
-
         f = FSM(state_id)
         f._connect_mq = mock.MagicMock(side_effect=pika.exceptions.AMQPError("Couldn't connect to AMQP"))
 
