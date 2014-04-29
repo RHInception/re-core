@@ -19,6 +19,7 @@ from recore import mongo
 from recore import amqp
 from recore.fsm import FSM
 import datetime
+import json
 import logging
 import mock
 import pika
@@ -37,6 +38,12 @@ _state = {
     'remaining_steps': []
 }
 UTCNOW = datetime.datetime.utcnow()
+msg_completed = {
+    "status": "completed"
+}
+msg_errored = {
+    "status": "errored"
+}
 
 
 class TestFsm(TestCase):
@@ -272,7 +279,7 @@ class TestFsm(TestCase):
         consume_iter = [
             (mock.Mock(name="method_mocked"),
              mock.Mock(name="properties_mocked"),
-             mock.Mock(name="body_mocked"))
+             json.dumps(msg_completed))
          ]
 
         publish = mock.Mock()
@@ -300,3 +307,59 @@ class TestFsm(TestCase):
         f.dequeue_next_active_step.assert_called_once_with()
         cleanup.assert_called_once_with()
         self.assertTrue(result)
+
+    @mock.patch.object(FSM, 'on_ended')
+    def test_on_started(self, ended):
+        """Once started, the FSM waits for a response, and then calls on_ended"""
+        f = FSM(state_id)
+        f.reply_queue = temp_queue
+
+        consume_iter = [
+            (mock.Mock(name="method_mocked"),
+             mock.Mock(name="properties_mocked"),
+             json.dumps(msg_completed))
+         ]
+
+        publish = mock.Mock()
+        channel = mock.Mock()
+        channel.consume.return_value = iter(consume_iter)
+        channel.basic_publish = publish
+        f.ch = channel
+
+        f.on_started(f.ch, *consume_iter[0])
+
+        f.ch.basic_ack.assert_called_once_with(consume_iter[0][0].delivery_tag)
+        f.ch.cancel.assert_called_once_with()
+        ended.assert_called_once_with(f.ch, *consume_iter[0])
+
+    @mock.patch.object(FSM, '_run')
+    @mock.patch.object(FSM, 'move_active_to_completed')
+    def test_on_ended(self, run, move_completed):
+        """Once a step ends the FSM checks if it completed or else"""
+        f = FSM(state_id)
+
+        consume_completed = [
+            mock.Mock(name="method_mocked"),
+            mock.Mock(name="properties_mocked"),
+            json.dumps(msg_completed)
+        ]
+
+        consume_errored = [
+            mock.Mock(name="method_mocked"),
+            mock.Mock(name="properties_mocked"),
+            json.dumps(msg_completed)
+        ]
+
+        # First check in the case where the job completed
+        result = f.on_ended(f.ch, *consume_completed)
+        f.move_active_to_completed.assert_called_once_with()
+        f._run.assert_called_once_with()
+
+        # Check the case where the job ended not "completed"
+        result = f.on_ended(f.ch, *consume_errored)
+        f.move_active_to_completed.reset_mock()
+        f._run.reset_mock()
+
+        self.assertFalse(f.move_active_to_completed.called)
+        self.assertFalse(f._run.called)
+        self.assertFalse(result)

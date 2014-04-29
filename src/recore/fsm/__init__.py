@@ -135,6 +135,7 @@ a project's release steps."""
             self._run()
         else:
             self.app_logger.error("State update received: Job finished with error(s)")
+            return False
 
     def move_active_to_completed(self):
         finished_step = self.active
