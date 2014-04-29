@@ -216,6 +216,24 @@ class TestFsm(TestCase):
         with self.assertRaises(pymongo.errors.PyMongoError):
             f.update_state(_update_state)
 
+    def test_dequeue_next_active_step(self):
+        """The FSM can remove the next step and update Mongo with it"""
+        f = FSM(state_id)
+        f.remaining = ["Step 1", "Step 2"]
+
+        _update_state = {
+            '$set': {
+                'active_step': "Step 1",
+                'remaining_steps': ["Step 2"]
+            }
+        }
+
+        with mock.patch.object(f, 'update_state') as (
+                us):
+            f.dequeue_next_active_step()
+            us.assert_called_once_with(_update_state)
+            self.assertEqual(f.active, "Step 1")
+
 
     # def test_update_state(self):
     #     """
