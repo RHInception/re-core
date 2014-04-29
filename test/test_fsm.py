@@ -288,3 +288,15 @@ class TestFsm(TestCase):
         f.ch.basic_ack.assert_called_once_with(consume_iter[0][0].delivery_tag)
         f.ch.cancel.assert_called_once_with()
         on_started.assert_called_once_with(f.ch, *consume_iter[0])
+
+    @mock.patch.object(FSM, '_cleanup')
+    @mock.patch.object(FSM, 'dequeue_next_active_step', mock.Mock(side_effect=IndexError))
+    @mock.patch.object(FSM, '_setup')
+    def test__run_finished(self, setup, cleanup):
+        """When the FSM is out of steps it raises IndexError and calls _cleanup"""
+        f = FSM(state_id)
+        result = f._run()
+        f._setup.assert_called_once_with()
+        f.dequeue_next_active_step.assert_called_once_with()
+        cleanup.assert_called_once_with()
+        self.assertTrue(result)
