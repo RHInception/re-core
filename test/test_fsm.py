@@ -14,17 +14,21 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from . import TestCase, unittest
+from bson.objectid import ObjectId
 from recore import mongo
 from recore import amqp
 from recore.fsm import FSM
+import datetime
+import logging
 import mock
 import pika
 import pika.exceptions
 import pymongo
-import datetime
+
 
 temp_queue = 'amqp-test_queue123'
 state_id = "123456abcdef"
+fsm__id = {'_id': ObjectId(state_id)}
 _state = {
     'project': 'example project',
     'dynamic': {},
@@ -36,6 +40,9 @@ UTCNOW = datetime.datetime.utcnow()
 
 
 class TestFsm(TestCase):
+    def setUp(self):
+        logging.disable(logging.CRITICAL)
+
     @mock.patch('recore.fsm.pika.PlainCredentials')
     @mock.patch('recore.fsm.pika.channel.Channel')
     @mock.patch('recore.fsm.pika.BlockingConnection')
@@ -117,6 +124,7 @@ class TestFsm(TestCase):
 
 
     def test__cleanup(self):
+        """Cleanup erases the needful"""
         f = FSM(state_id)
         f.ch = mock.Mock(pika.channel.Channel)
         f.conn = mock.Mock(pika.connection.Connection)
@@ -141,6 +149,7 @@ class TestFsm(TestCase):
             f.ch.queue_delete.assert_called_once_with(queue=temp_queue)
 
     def test__cleanup_failed(self):
+        """Cleanup fails if update_state raises"""
         f = FSM(state_id)
         f.ch = mock.Mock(pika.channel.Channel)
         f.conn = mock.Mock(pika.connection.Connection)
@@ -150,6 +159,62 @@ class TestFsm(TestCase):
                 us_exception):
             with self.assertRaises(Exception):
                 f._cleanup()
+
+    def test_update_state(self):
+        """State updating does the needful"""
+        f = FSM(state_id)
+        f.state_coll = mock.MagicMock(spec=pymongo.collection.Collection,
+                                      return_value=True)
+
+        _update_state = {
+            '$set': {
+                'ended': UTCNOW
+            }
+        }
+
+        # FSM Sets its state document ID attr properly
+        self.assertEqual(f._id, fsm__id)
+
+        f.update_state(_update_state)
+
+        # FSM passes the needful to the update method
+        f.state_coll.update.assert_called_once_with(fsm__id,
+                                                    _update_state)
+
+    def test_update_missing_state(self):
+        """We notice if no document was found to update"""
+        f = FSM(state_id)
+        f.state_coll = mock.MagicMock(spec=pymongo.collection.Collection,
+                                      return_value=True)
+
+        f.state_coll.update.return_value = None
+
+        _update_state = {
+            '$set': {
+                'ended': UTCNOW
+            }
+        }
+
+        with self.assertRaises(Exception):
+            f.update_state(_update_state)
+
+    def test_update_state_mongo_failed(self):
+        """We notice if mongo failed while updating state"""
+        f = FSM(state_id)
+        f.state_coll = mock.MagicMock(spec=pymongo.collection.Collection,
+                                      return_value=True)
+
+        mocked_update = mock.MagicMock(side_effect=pymongo.errors.PyMongoError)
+        f.state_coll.update = mocked_update
+
+        _update_state = {
+            '$set': {
+                'ended': UTCNOW
+            }
+        }
+
+        with self.assertRaises(pymongo.errors.PyMongoError):
+            f.update_state(_update_state)
 
 
     # def test_update_state(self):
