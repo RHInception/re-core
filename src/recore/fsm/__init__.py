@@ -56,7 +56,7 @@ a project's release steps."""
         self.dynamic = {}
         self.reply_queue = None
 
-    def run(self):
+    def run(self):  # pragma: no cover
         try:
             self._run()
         except pika.exceptions.ConnectionClosed:

@@ -234,6 +234,39 @@ class TestFsm(TestCase):
             us.assert_called_once_with(_update_state)
             self.assertEqual(f.active, "Step 1")
 
+    def test_move_active_to_completed(self):
+        """FSM can update after completing a step"""
+        f = FSM(state_id)
+        active_step = {"plugin": "not real"}
+        f.active = active_step.copy()
+        f.completed = []
+
+        # For .called_once_with()
+        _update_state = {
+            '$set': {
+                'active_step': None,
+                'completed_steps': [active_step]
+            }
+        }
+
+        with mock.patch.object(f, 'update_state') as (us):
+            f.move_active_to_completed()
+            us.assert_called_once_with(_update_state)
+            self.assertEqual(f.active, None)
+            self.assertEqual(f.completed, [active_step])
+
+        # finished_step = self.active
+        # self.completed.append(finished_step)
+        # self.active = None
+
+        # _update_state = {
+        #     '$set': {
+        #         'active_step': self.active,
+        #         'completed_steps': self.completed
+        #     }
+        # }
+        # self.update_state(_update_state)
+
 
     # def test_update_state(self):
     #     """
