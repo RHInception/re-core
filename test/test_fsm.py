@@ -21,7 +21,9 @@ import mock
 import pika
 import pika.exceptions
 import pymongo
+import datetime
 
+temp_queue = 'amqp-test_queue123'
 state_id = "123456abcdef"
 _state = {
     'project': 'example project',
@@ -30,6 +32,7 @@ _state = {
     'active_step': {},
     'remaining_steps': []
 }
+UTCNOW = datetime.datetime.utcnow()
 
 
 class TestFsm(TestCase):
@@ -45,7 +48,6 @@ class TestFsm(TestCase):
             'SERVER': '127.0.0.1',
             'EXCHANGE': 'foochange'
         }
-        temp_queue = 'amqp-test_queue123'
         creds.return_value = mock.MagicMock(spec=pika.credentials.PlainCredentials, name="mocked creds")
         mocked_conn = mock.MagicMock(spec=pika.connection.Connection, name="mocked connection")
         mocked_channel = mock.MagicMock(spec=pika.channel.Channel, name="mocked channel")
@@ -114,6 +116,40 @@ class TestFsm(TestCase):
                     f._setup()
 
 
+    def test__cleanup(self):
+        f = FSM(state_id)
+        f.ch = mock.Mock(pika.channel.Channel)
+        f.conn = mock.Mock(pika.connection.Connection)
+        f.reply_queue = temp_queue
+
+        _update_state = {
+            '$set': {
+                'ended': UTCNOW
+            }
+        }
+
+        with mock.patch.object(f, 'update_state', mock.Mock()) as (
+                us):
+            with mock.patch('recore.fsm.dt') as (
+                    dt):
+                dt.now.return_value = UTCNOW
+                f._cleanup()
+
+            # update state set the ended item in the state doc.
+            us.assert_called_with(_update_state)
+            f.conn.close.assert_called_once_with()
+            f.ch.queue_delete.assert_called_once_with(queue=temp_queue)
+
+    def test__cleanup_failed(self):
+        f = FSM(state_id)
+        f.ch = mock.Mock(pika.channel.Channel)
+        f.conn = mock.Mock(pika.connection.Connection)
+
+        with mock.patch.object(f, 'update_state',
+                               mock.Mock(side_effect=Exception("derp"))) as (
+                us_exception):
+            with self.assertRaises(Exception):
+                f._cleanup()
 
 
     # def test_update_state(self):
