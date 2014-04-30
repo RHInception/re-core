@@ -168,3 +168,24 @@ class TestAMQP(TestCase):
                 # No release calls should be made
                 assert amqp.recore.job.create.release.call_count == 0
                 assert amqp.recore.fsm.FSM.call_count == 0
+
+    def test_job_create_with_invalid_json(self):
+        """
+        New job requests with invalid json don't crash the FSM
+        """
+        project = 'testproject'
+        release_id = 12345
+        body = '{"project": %s, "status": "completed"' % project
+        method = mock.MagicMock(routing_key='job.create')
+
+        with mock.patch('recore.job.create') as amqp.recore.job.create:
+            amqp.recore.job.create.release.return_value = release_id
+            with mock.patch('recore.fsm') as amqp.recore.fsm:
+                with mock.patch('recore.amqp.reject') as amqp.reject:
+                    # Make the call
+                    amqp.receive(channel, method, PROPERTIES, body)
+                    # No release calls should be made
+                    assert amqp.recore.job.create.release.call_count == 0
+                    assert amqp.recore.fsm.FSM.call_count == 0
+                    amqp.reject.assert_called_once_with(
+                        channel, method, True)

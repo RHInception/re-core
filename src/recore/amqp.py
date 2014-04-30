@@ -67,13 +67,29 @@ def on_channel_open(channel):
     return consumer_tag
 
 
+def reject(ch, method, requeue=False):
+    """
+    Reject the message with the given `basic_deliver`
+    """
+    ch.basic_reject(
+        method.delivery_tag,
+        requeue=requeue)
+
+
 def receive(ch, method, properties, body):
     """
     Callback for watching the FSM queue
     """
     out = logging.getLogger('recore')
     notify = logging.getLogger('recore.stdout')
-    msg = json.loads(body)
+    try:
+        msg = json.loads(body)
+    except ValueError, ve:
+        # Not JSON or not able to decode
+        out.debug("Unable to decode message. Rejecting: %s" % body)
+        reject(ch, method, False)
+        notify.info("Unable to decode message. Rejected.")
+        return
     topic = method.routing_key
     out.debug("Message: %s" % msg)
     ch.basic_ack(delivery_tag=method.delivery_tag)
