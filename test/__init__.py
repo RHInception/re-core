@@ -13,7 +13,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import unittest
+import platform
+(major, minor, patch) = platform.python_version_tuple()
+if int(major) == 2 and int(minor) < 7:
+    import unittest2 as unittest
+else:
+    import unittest
 
 
 class TestCase(unittest.TestCase):
