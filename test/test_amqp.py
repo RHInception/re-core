@@ -188,4 +188,4 @@ class TestAMQP(TestCase):
                     assert amqp.recore.job.create.release.call_count == 0
                     assert amqp.recore.fsm.FSM.call_count == 0
                     amqp.reject.assert_called_once_with(
-                        channel, method, True)
+                        channel, method, False)
