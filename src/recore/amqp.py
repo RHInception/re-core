@@ -87,7 +87,7 @@ def receive(ch, method, properties, body):
     except ValueError, ve:
         # Not JSON or not able to decode
         out.debug("Unable to decode message. Rejecting: %s" % body)
-        reject(ch, method, False)
+        reject(ch, method, True)
         notify.info("Unable to decode message. Rejected.")
         return
     topic = method.routing_key
