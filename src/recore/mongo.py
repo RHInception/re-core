@@ -63,7 +63,8 @@ is either a hash or `None` if no matches were found.
     """
     out = logging.getLogger('recore')
     try:
-        projects = d['projects']
+        # TODO: make this a config var
+        projects = d['playbooks']
         search_result = projects.find_one({'project': project})
         if search_result:
             out.debug("Found project definition: %s" % project)
