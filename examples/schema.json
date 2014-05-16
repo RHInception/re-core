@@ -1,0 +1,87 @@
+{
+    "type":"object",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions": {
+        "project": {
+            "type":"string"
+        },
+        "ownership": {
+            "type":"object",
+            "properties":{
+                "contact": {
+                    "type":"string"
+                },
+                "id": {
+                    "type":"string"
+                }
+            },
+            "additionalProperties": {"type": "string"}
+        },
+        "notify_irc": {
+            "type":"array",
+	    "items": {
+		"type":"string"
+	    }
+        },
+        "notify_email": {
+            "type":"array",
+            "items": {
+		"format": "email",
+                "minItems": 1
+            }
+        },
+        "notify_methods": {
+            "type": "object",
+            "properties": {
+                "email": {"$ref": "#/definitions/notify_email"},
+                "irc": {"$ref": "#/definitions/notify_irc"}
+            }
+        },
+        "notify": {
+            "type": "object",
+            "properties": {
+                "start": {"$ref": "#/definitions/notify_methods"},
+                "complete": {"$ref": "#/definitions/notify_methods"}
+            }
+        },
+        "step_name": {
+            "type":"string"
+        },
+        "step_plugin": {
+            "type":"string"
+        },
+        "step_parameters": {
+            "type":"object"
+        },
+        "step_dynamic": {
+            "type":"array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "step": {
+            "type":"object",
+            "properties": {
+                "name": {"$ref": "#/definitions/step_name"},
+                "plugin": {"$ref": "#/definitions/step_plugin"},
+                "parameters": {"$ref": "#/definitions/step_parameters"},
+                "dynamic": {"$ref": "#/definitions/step_dynamic"},
+                "notify": {"$ref": "#/definitions/notify"}
+            },
+            "required": [
+                "name",
+                "plugin"
+            ]
+        },
+        "steps": {
+            "type":"array",
+            "items": {"$ref": "#/definitions/step"}
+        }
+    },
+    "properties":{
+        "project": {"$ref": "#/definitions/project"},
+        "ownership": {"$ref": "#/definitions/ownership"},
+        "steps": {"$ref": "#/definitions/steps"}
+    },
+    "required": ["project", "ownership", "steps"]
+}

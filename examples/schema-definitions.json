@@ -1,0 +1,87 @@
+{
+    "definitions": {
+        "project": {
+            "type":"string",
+            "id": "http://jsonschema.net/project",
+            "required":true
+        },
+        "ownership": {
+            "type":"object",
+            "id": "http://jsonschema.net/ownership",
+            "required":true,
+            "properties":{
+                "contact": {
+                    "type":"string",
+                    "id": "http://jsonschema.net/ownership/contact",
+                    "required":false
+                },
+                "id": {
+                    "type":"string",
+                    "id": "http://jsonschema.net/ownership/id",
+                    "required":true
+                }
+            },
+            "additionalProperties": {"type": "string"}
+        },
+        "notify_irc": {
+            "type":"object",
+            "id": "http://jsonschema.net/steps/0/notify/start/irc",
+            "properties":{
+                "channel": {
+                    "type":"string",
+                    "id": "http://jsonschema.net/steps/0/notify/start/irc/channel",
+                    "pattern": "^#"
+                }
+            }
+        },
+        "notify_email": {
+            "type":"array",
+            "id": "http://jsonschema.net/steps/0/notify/complete/email",
+            "items": {
+                "type":"string",
+                "id": "http://jsonschema.net/steps/0/notify/complete/email/to/0",
+                "minItems": 1
+            }
+        },
+
+        "step_name": {
+            "type":"string"
+        },
+        "step_plugin": {
+            "type":"string"
+        },
+        "step_parameters": {
+            "type":"object"
+        },
+        "step_dynamic": {
+            "type":"array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "steps": {
+            "type":"array",
+            "items": {"$ref": "#/definitions/step"}
+        },
+        "step": {
+            "type":"object",
+            "properties": {
+                "name": {"$ref": "#/definitions/step_name"},
+                "plugin": {"$ref": "#/definitions/step_plugin"},
+                "parameters": {"$ref": "#/definitions/step_parameters"},
+                "dynamic": {"$ref": "#/definitions/step_dynamic"},
+                "notify": {
+                    "type": "array",
+                    "items": {
+                        "anyOf": [
+                            {"$ref": "#/definitions/notify_irc"},
+                            {"$ref": "#/definitions/notify_email"}
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "plugin"
+                ]
+            }
+        }

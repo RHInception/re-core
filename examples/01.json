@@ -1,35 +1,36 @@
 {
     "project": "example project",
     "ownership": {
-	"id": "Some team",
+        "id": "Some team",
         "contact": "someteam@example.com"
     },
     "steps": [
 	{
-	    "name": "example step",
-	    "plugin": "shexec",
+	    "name": "foo",
+	    "plugin": "funcworker",
 	    "parameters": {
-		"command": "ls -l /"
+		"service": {
+		    "stop": ["fooservice"],
+		}
 	    }
 	},
-	{
-	    "name": "promote the cart",
-	    "plugin": "juicer",
+        {
+            "name": "example step",
+            "plugin": "shexec",
+            "parameters": {
+                "command": "ls -l /"
+            }
+        },
+        {
+            "name": "promote the cart",
+            "plugin": "juicer",
             // Different from 'shexec' in that this command requires
             // dynamic information.
-	    "parameters": {},
+            "parameters": {},
             // This asserts that the 'juicer' plugin requires 'cart'
             // and 'environment' variables to be passed into it
-	    "dynamic": ["cart", "environment"],
-            "notify": {
-		"start": {
-                    "irc": {"channel": "#whargarble"}
-                },
-		"complete": {
-                    "irc": {"channel": "#whargarble"},
-                    "email": {"to": ["foobar@example.com", "bro@example.com"]}
-               }
-            }
-	}
+            "dynamic": ["cart", "environment"],
+
+        }
     ]
 }

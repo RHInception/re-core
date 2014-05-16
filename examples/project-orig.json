@@ -1,0 +1,45 @@
+{
+    "project" : "example project",
+    "ownership" : {
+        "id" : "Some team",
+        "contact" : "someteam@example.com"
+    },
+    "steps" : [
+        {
+            "name" : "example step",
+            "plugin" : "shellexec",
+            "parameters" : {
+                "command" : "ls -l /"
+            }
+        },
+        {
+            "name" : "promote the cart",
+            "plugin" : "juicer",
+            "parameters" : {
+
+            },
+            "dynamic" : [
+                "cart",
+                "environment"
+            ],
+            "notify" : {
+                "start" : {
+                    "irc" : {
+                        "channel" : "#whargarble"
+                    }
+                },
+                "complete" : {
+                    "irc" : {
+                        "channel" : "#whargarble"
+                    },
+                    "email" : {
+                        "to" : [
+                            "foobar@example.com",
+                            "bro@example.com"
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}
