@@ -89,7 +89,7 @@ a project's release steps."""
         params = self.active['parameters']
         msg = {
             'project': self.project,
-            'params': params,
+            'parameters': params,
             'dynamic': self.dynamic
         }
         plugin_queue = "worker.%s" % self.active['plugin']
