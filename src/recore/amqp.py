@@ -107,7 +107,7 @@ def receive(ch, method, properties, body):
             reply_to = properties.reply_to
 
             id = recore.job.create.release(
-                ch, msg['project'], reply_to, msg['dynamic'])
+                ch, msg['project'], reply_to, msg.get('dynamic', {}))
         except KeyError, ke:
             notify.info("Missing an expected key in message: %s" % ke)
             out.error("Missing an expected key in message: %s" % ke)
