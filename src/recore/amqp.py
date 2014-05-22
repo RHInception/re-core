@@ -19,6 +19,7 @@ import json
 import pika
 import recore.fsm
 import recore.job.create
+import signal
 
 
 MQ_CONF = {}
@@ -119,6 +120,7 @@ def receive(ch, method, properties, body):
             # try:
             runner = recore.fsm.FSM(id)
             runner.start()
+            signal.signal(signal.SIGINT, sighandler)
             # while runner.isAlive():
             #     runner.join(0.3)
             # except Exception, e:
@@ -129,3 +131,14 @@ def receive(ch, method, properties, body):
 
     notify.info("end receive() routine")
     out.debug("end receive() routine")
+
+
+def sighandler(signal, frame):
+    """
+    If we get SIGINT on the CLI, we need to quit all the threads
+    in our process group
+    """
+    import os
+    import signal
+
+    os.killpg(os.getpgid(0), signal.SIGQUIT)

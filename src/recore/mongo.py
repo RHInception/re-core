@@ -110,7 +110,9 @@ def initialize_state(d, project, dynamic={}):
     # which when `str`'d returns a reasonable value.
     out = logging.getLogger('recore')
 
-    project_steps = lookup_project(d, project).get('steps', [])
+    _project = lookup_project(d, project)
+    project_steps = _project.get('steps', [])
+    playbook_id = _project['_id']
 
     # TODO: Validate dynamic before inserting state ...
     state0 = recore.constants.NEW_STATE_RECORD.copy()
@@ -118,7 +120,8 @@ def initialize_state(d, project, dynamic={}):
         'created': datetime.datetime.utcnow(),
         'project': project,
         'dynamic': dynamic,
-        'remaining_steps': project_steps
+        'remaining_steps': project_steps,
+        'playbook_id': playbook_id
     })
 
     try:

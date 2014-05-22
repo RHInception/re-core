@@ -55,6 +55,7 @@ a project's release steps."""
         self.state = {}
         self.dynamic = {}
         self.reply_queue = None
+        self.failed = False
 
     def run(self):  # pragma: no cover
         try:
@@ -100,7 +101,7 @@ a project's release steps."""
                               body=json.dumps(msg),
                               properties=props)
 
-        self.app_logger.info("Sent plugin new job details")
+        self.app_logger.info("Sent plugin (%s) new job details" % plugin_queue)
 
         # Begin consuming from reply_queue
         self.app_logger.debug("Waiting for plugin to update us")
@@ -111,15 +112,29 @@ a project's release steps."""
             self.on_started(self.ch, method, properties, body)
 
     def on_started(self, channel, method_frame, header_frame, body):
-        self.app_logger.info("Plugin 'started' update received. "
-                             "Waiting for next state update")
-        self.app_logger.debug("Waiting for completed/errored message")
+        self.app_logger.debug("Plugin responded with: %s" % body)
 
-        # Consume from reply_queue, wait for completed/errored message
-        for method, properties, body in self.ch.consume(self.reply_queue):
-            self.ch.basic_ack(method.delivery_tag)
-            self.ch.cancel()
-            self.on_ended(self.ch, method, properties, body)
+        _body = json.loads(body)
+        if _body['status'] != 'started':
+            # Lets get off this train. The plugin aborted and we don't
+            # want to hang around any more. Leave the currently active
+            # step where it is, move the remaining steps to 'skipped',
+            # and then skip ahead to the on_ended method. Forward our
+            # current "errored/failed" message to it.
+            self.app_logger.error("Received failure/error message from the worker: %s" % (
+                    body))
+            self.move_remaining_to_skipped()
+            self.on_ended(channel, method_frame, header_frame, body)
+        else:
+            self.app_logger.info("Plugin 'started' update received. "
+                                 "Waiting for next state update")
+            self.app_logger.debug("Waiting for completed/errored message")
+
+            # Consume from reply_queue, wait for completed/errored message
+            for method, properties, body in self.ch.consume(self.reply_queue):
+                self.ch.basic_ack(method.delivery_tag)
+                self.ch.cancel()
+                self.on_ended(self.ch, method, properties, body)
 
     def on_ended(self, channel, method_frame, header_frame, body):
         self.app_logger.debug("Got completed/errored message back from the worker")
@@ -135,7 +150,7 @@ a project's release steps."""
             self._run()
         else:
             self.app_logger.error("State update received: Job finished with error(s)")
-            return False
+            self._run()
 
     def move_active_to_completed(self):
         finished_step = self.active
@@ -150,14 +165,45 @@ a project's release steps."""
         }
         self.update_state(_update_state)
 
-    def dequeue_next_active_step(self):
+    def move_remaining_to_skipped(self):
+        """Most likely an error message has just arrived from a worker
+        and the active step does not allow ignoring errors."""
+
+        self.skipped_steps = self.remaining
+        self.remaining = []
+
+        _update_state = {
+            '$push': {
+                'skipped_steps': {
+                    '$each': self.skipped_steps
+                    }
+                },
+            '$set': {
+                'remaining_steps': self.remaining
+                }
+            }
+
+        self.update_state(_update_state)
+        self.app_logger.debug("Moved %s remaining steps into 'skipped_steps'" % len(self.skipped_steps))
+        # We've moved the remaining steps into the skipped steps
+        # list. The next time the FSM loops it will enter its cleanup
+        # method and then terminate.
+
+        # Accept our fate and admit we are a failure (so we can log
+        # this properly in the db)
+        self.failed = True
+        self.app_logger.debug("Recorded failed state in this FSM instance")
+
+        return True
+
+    def dequeue_next_active_step(self, to='active_step'):
         """Take the next remaining step off the queue and move it into active
         steps.
         """
         self.active = self.remaining.pop(0)
         _update_state = {
             '$set': {
-                'active_step': self.active,
+                to: self.active,
                 'remaining_steps': self.remaining
             }
         }
@@ -190,7 +236,8 @@ a project's release steps."""
 
         _update_state = {
             '$set': {
-                'ended': dt.now()
+                'ended': dt.now(),
+                'failed': self.failed
             }
         }
 
