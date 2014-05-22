@@ -19,6 +19,7 @@ import logging
 import mock
 import pika
 
+
 class TestRecoreInit(TestCase):
     def setUp(self):
         self.config_file_dne = '/dev/ihopethisfiledoesntexist.json'
@@ -26,7 +27,6 @@ class TestRecoreInit(TestCase):
         self.config_file_valid = './test/files/settings-example.json'
         self.log_level = logging.INFO
         self.log_level_stdout = logging.INFO
-
 
     def test_start_logging(self):
         """Loggers are created with appropriate handlers associated"""
@@ -39,7 +39,6 @@ class TestRecoreInit(TestCase):
                          msg="logcore level is actually %s but we wanted %s" % (_logcore.level, self.log_level))
         self.assertEqual(_logcorestdout.level, self.log_level_stdout,
                          msg="logcorestdout level is actually %s but we wanted %s" % (_logcorestdout.level, self.log_level_stdout))
-
 
     def test_parse_config(self):
         """An example configuration file can be parsed"""
@@ -76,7 +75,6 @@ class TestRecoreInit(TestCase):
         # Verify that init_mongo sets the mongo module conn/db variables
         self.assertIs(recore.mongo.connection, connection)
         self.assertIs(recore.mongo.database, database)
-
 
     #
     # Combined connect_mq with init_amqp. Need to refacter this unit test
@@ -126,7 +124,6 @@ class TestRecoreInit(TestCase):
     #     #
     #     # I can't for the life of me figure out how to make the
     #     # queue_name check work.... skip it for now.
-
 
     # Combined receive with 'watch the queue'. Need to update this unit test
     #

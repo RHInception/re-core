@@ -121,7 +121,8 @@ a project's release steps."""
             # step where it is, move the remaining steps to 'skipped',
             # and then skip ahead to the on_ended method. Forward our
             # current "errored/failed" message to it.
-            self.app_logger.error("Received failure/error message from the worker: %s" % (
+            self.app_logger.error(
+                "Received failure/error message from the worker: %s" % (
                     body))
             self.move_remaining_to_skipped()
             self.on_ended(channel, method_frame, header_frame, body)

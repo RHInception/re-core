@@ -75,7 +75,6 @@ class TestMongo(TestCase):
         # Error result is {}
         assert mongo.lookup_project({}, "project") == {}
 
-
     def test_initialize_state(self):
         """
         Make sure that creating the initial state uses proper data
@@ -107,7 +106,6 @@ class TestMongo(TestCase):
                     'remaining_steps': [],
                     'reply_to': None,
                 })
-
 
     def test_initialize_state_with_error(self):
         """

@@ -79,8 +79,10 @@ class TestFsm(TestCase):
         """Setup works with an existing state document"""
         f = FSM(state_id)
         # An AMQP connection hasn't been made yet
-        f._connect_mq = mock.MagicMock(return_value=(mock.Mock(pika.channel.Channel),
-                                      mock.Mock(pika.connection.Connection)))
+        f._connect_mq = mock.MagicMock(
+            return_value=(
+                mock.Mock(pika.channel.Channel),
+                mock.Mock(pika.connection.Connection)))
 
         with mock.patch('recore.mongo.database') as (
                 mongo.database):
@@ -128,7 +130,6 @@ class TestFsm(TestCase):
 
                 with self.assertRaises(pika.exceptions.AMQPError):
                     f._setup()
-
 
     def test__cleanup(self):
         """Cleanup erases the needful"""
@@ -276,11 +277,11 @@ class TestFsm(TestCase):
             'plugin': 'fake',
             'parameters': {'no': 'parameters'}
         }
-        consume_iter = [
-            (mock.Mock(name="method_mocked"),
-             mock.Mock(name="properties_mocked"),
-             json.dumps(msg_completed))
-         ]
+        consume_iter = [(
+            mock.Mock(name="method_mocked"),
+            mock.Mock(name="properties_mocked"),
+            json.dumps(msg_completed),
+        )]
 
         publish = mock.Mock()
         channel = mock.Mock()
@@ -318,7 +319,7 @@ class TestFsm(TestCase):
             (mock.Mock(name="method_mocked"),
              mock.Mock(name="properties_mocked"),
              json.dumps(msg_completed))
-         ]
+        ]
 
         publish = mock.Mock()
         channel = mock.Mock()

@@ -19,16 +19,17 @@ import sys
 
 from distutils.core import setup
 
-setup(name='re-core',
-      version='0.0.2',
-      description='',
-      author='See AUTHORS file',
-      author_email='inception@redhat.com',
-      url='https://github.com/rhinception/re-core',
-      license='AGPLv3',
-      package_dir={ 'recore': 'src/recore' },
-      packages=['recore', 'recore.job', 'recore.fsm'],
-      scripts=[
-         'bin/re-core',
-      ]
+setup(
+    name='re-core',
+    version='0.0.2',
+    description='',
+    author='See AUTHORS file',
+    author_email='inception@redhat.com',
+    url='https://github.com/rhinception/re-core',
+    license='AGPLv3',
+    package_dir={'recore': 'src/recore'},
+    packages=['recore', 'recore.job', 'recore.fsm'],
+    scripts=[
+        'bin/re-core',
+    ]
 )
