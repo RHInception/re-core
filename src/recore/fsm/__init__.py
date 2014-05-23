@@ -177,12 +177,12 @@ a project's release steps."""
             '$push': {
                 'skipped_steps': {
                     '$each': self.skipped_steps
-                    }
-                },
+                }
+            },
             '$set': {
                 'remaining_steps': self.remaining
-                }
             }
+        }
 
         self.update_state(_update_state)
         self.app_logger.debug("Moved %s remaining steps into 'skipped_steps'" % len(self.skipped_steps))

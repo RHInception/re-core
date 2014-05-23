@@ -85,7 +85,7 @@ def receive(ch, method, properties, body):
     notify = logging.getLogger('recore.stdout')
     try:
         msg = json.loads(body)
-    except ValueError, ve:
+    except ValueError:
         # Not JSON or not able to decode
         out.debug("Unable to decode message. Rejecting: %s" % body)
         reject(ch, method, False)
