@@ -88,7 +88,8 @@ class TestMongo(TestCase):
         with mock.patch('recore.mongo.lookup_project') as (
                 mongo.lookup_project):
             mongo.lookup_project = mock.MagicMock()
-            mongo.lookup_project.return_value.get.return_value = []
+            PLAYBOOK_ID = 1234567
+            mongo.lookup_project.return_value = {'_id': PLAYBOOK_ID}
 
             with mock.patch('recore.mongo.datetime.datetime') as (
                     mongo.datetime.datetime):
@@ -98,13 +99,17 @@ class TestMongo(TestCase):
 
                 mongo.initialize_state(db, project, dynamic={})
                 db['state'].insert.assert_called_once_with({
-                    'active_step': {},
-                    'completed_steps': [],
+                    'failed': False,
                     'created': UTCNOW,
+                    'completed_steps': [],
                     'dynamic': {},
-                    'project': project,
                     'remaining_steps': [],
+                    'project': project,
+                    'ended': None,
+                    'active_step': {},
                     'reply_to': None,
+                    'playbook_id': PLAYBOOK_ID,
+                    'skipped_steps': []
                 })
 
     def test_initialize_state_with_error(self):

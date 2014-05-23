@@ -14,6 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from . import TestCase, unittest
+from contextlib import nested
 from bson.objectid import ObjectId
 from recore import mongo
 from recore import amqp
@@ -38,6 +39,9 @@ _state = {
     'remaining_steps': []
 }
 UTCNOW = datetime.datetime.utcnow()
+msg_started = {
+    "status": "started"
+}
 msg_completed = {
     "status": "completed"
 }
@@ -140,7 +144,8 @@ class TestFsm(TestCase):
 
         _update_state = {
             '$set': {
-                'ended': UTCNOW
+                'ended': UTCNOW,
+                'failed': False
             }
         }
 
@@ -312,26 +317,39 @@ class TestFsm(TestCase):
     @mock.patch.object(FSM, 'on_ended')
     def test_on_started(self, ended):
         """Once started, the FSM waits for a response, and then calls on_ended"""
-        f = FSM(state_id)
-        f.reply_queue = temp_queue
+        with nested(
+                mock.patch('recore.mongo.lookup_state'),
+                mock.patch('recore.mongo.database')
+            ) as (lookup_state, database):
 
-        consume_iter = [
-            (mock.Mock(name="method_mocked"),
-             mock.Mock(name="properties_mocked"),
-             json.dumps(msg_completed))
-        ]
+            lookup_state.return_value = {
+                'project': 'PROJECT',
+                'dynamic': {},
+                'completed_steps': [],
+                'active_step': 'active_step',
+                'remaining_steps': [],
+            }
+            f = FSM(state_id)
+            f.reply_queue = temp_queue
 
-        publish = mock.Mock()
-        channel = mock.Mock()
-        channel.consume.return_value = iter(consume_iter)
-        channel.basic_publish = publish
-        f.ch = channel
+            consume_iter = [
+                (mock.Mock(name="method_mocked"),
+                 mock.Mock(name="properties_mocked"),
+                 json.dumps(msg_started))
+            ]
 
-        f.on_started(f.ch, *consume_iter[0])
+            publish = mock.Mock()
+            channel = mock.Mock()
+            channel.consume.return_value = iter(consume_iter)
+            channel.basic_publish = publish
+            f.ch = channel
 
-        f.ch.basic_ack.assert_called_once_with(consume_iter[0][0].delivery_tag)
-        f.ch.cancel.assert_called_once_with()
-        ended.assert_called_once_with(f.ch, *consume_iter[0])
+            f._setup()
+            f.on_started(f.ch, *consume_iter[0])
+
+            f.ch.basic_ack.assert_called_once_with(consume_iter[0][0].delivery_tag)
+            f.ch.cancel.assert_called_once_with()
+            f.on_ended.assert_called_once_with(f.ch, *consume_iter[0])
 
     @mock.patch.object(FSM, '_run')
     @mock.patch.object(FSM, 'move_active_to_completed')
@@ -361,6 +379,10 @@ class TestFsm(TestCase):
         f._run.reset_mock()
         result = f.on_ended(f.ch, *consume_errored)
 
+        # TODO: Tim verify. According to the code _run is called
+        #       on failure or success. See line 151 and 154
+        #       of src/fsm/__init__.py
+        assert f._run.called
+        # ---
         self.assertFalse(f.move_active_to_completed.called)
-        self.assertFalse(f._run.called)
         self.assertFalse(result)
