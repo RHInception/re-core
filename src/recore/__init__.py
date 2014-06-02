@@ -84,7 +84,7 @@ def main(args):  # pragma: no cover
         raise SystemExit(1)
 
     try:
-        connection = recore.amqp.init_amqp(config['MQ'])
+        connection = recore.amqp.init_amqp(config)
         connection.ioloop.start()
     except KeyError, ke:
         out.fatal("Missing a required key in MQ config: %s" % ke)

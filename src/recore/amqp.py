@@ -23,22 +23,26 @@ import signal
 
 
 MQ_CONF = {}
+CONF = {}
 connection = None
 out = logging.getLogger('recore.amqp')
 
 
-def init_amqp(mq):
+def init_amqp(conf):
     """Open a channel to our AMQP server"""
     import recore.amqp
-    recore.amqp.MQ_CONF = mq
+    recore.amqp.MQ_CONF = conf['MQ']
+    recore.amqp.CONF = conf
 
-    creds = pika.credentials.PlainCredentials(mq['NAME'], mq['PASSWORD'])
+    creds = pika.credentials.PlainCredentials(
+        conf['MQ']['NAME'], conf['MQ']['PASSWORD'])
     params = pika.ConnectionParameters(
-        host=str(mq['SERVER']),
+        host=str(conf['MQ']['SERVER']),
         credentials=creds)
 
     connect_string = "amqp://%s:******@%s:%s/%s" % (
-        mq['NAME'], mq['SERVER'], mq['PORT'], mq['EXCHANGE'])
+        conf['MQ']['NAME'], conf['MQ']['SERVER'],
+        conf['MQ']['PORT'], conf['MQ']['EXCHANGE'])
     out.debug('Attemtping to open channel with connect string: %s' % (
         connect_string))
     recore.amqp.connection = pika.SelectConnection(parameters=params,
@@ -75,6 +79,26 @@ def reject(ch, method, requeue=False):
     ch.basic_reject(
         method.delivery_tag,
         requeue=requeue)
+
+
+def send_notification(ch, routing_key, state_id, target, phase, message):
+    """
+    Sends a notification message.
+    """
+    msg = {
+        'slug': message[:80],
+        'message': message,
+        'phase': phase,
+        'target': target,
+    }
+    props = pika.spec.BasicProperties()
+    props.correlation_id = state_id
+
+    ch.basic_publish(
+        exchange='',
+        routing_key=routing_key,
+        body=json.dumps(msg),
+        properties=props)
 
 
 def receive(ch, method, properties, body):

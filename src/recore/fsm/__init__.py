@@ -230,6 +230,23 @@ a project's release steps."""
             raise pmex
 
     def _cleanup(self):
+        # Send ending notification
+        status = 'failed'
+        if not self.failed:
+            status = 'completed'
+
+        recore.amqp.send_notification(
+            self.ch,
+            recore.amqp.CONF['PHASE_NOTIFICATION']['TOPIC'],
+            self.state_id,
+            recore.amqp.CONF['PHASE_NOTIFICATION']['TARGET'],
+            status,
+            'Release %s %s. See %s.' % (
+                self.state_id,
+                status,
+                recore.amqp.CONF['PHASE_NOTIFICATION']['TABOOT_URL'] % (
+                    self.state_id)))
+
         self.ch.queue_delete(queue=self.reply_queue)
         self.app_logger.debug("Deleted AMQP queue: %s" % self.reply_queue)
         self.conn.close()
@@ -293,3 +310,14 @@ a project's release steps."""
         self.remaining = self.state['remaining_steps']
         self.db = recore.mongo.database
         self.state_coll = self.db['state']
+
+        recore.amqp.send_notification(
+            self.ch,
+            recore.amqp.CONF['PHASE_NOTIFICATION']['TOPIC'],
+            self.state_id,
+            recore.amqp.CONF['PHASE_NOTIFICATION']['TARGET'],
+            'started',
+            'Release %s started. See %s.' % (
+                self.state_id,
+                recore.amqp.CONF['PHASE_NOTIFICATION']['TABOOT_URL'] % (
+                    self.state_id)))

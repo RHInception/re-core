@@ -23,13 +23,32 @@ from recore import amqp
 
 
 # Mocks
-MQ = {
-    'NAME': 'username',
-    'PASSWORD': 'password',
-    'SERVER': '127.0.0.1',
-    'PORT': 12345,
-    'EXCHANGE': 're',
-    'QUEUE': 'testqueue'
+CONF = {
+    "LOGFILE": "recore.log",
+    "MQ": {
+        "NAME": "username",
+        "PASSWORD": "password",
+        "SERVER": "127.0.0.1",
+        "PORT": 12345,
+        "EXCHANGE": "re",
+        "QUEUE": "testqueue"
+    },
+    "DB": {
+	"SERVERS": [
+	    "mongo01.example.com",
+	    "mongo02.example.com"
+	],
+	"DATABASE": "re",
+	"NAME": "lordmongo",
+	"PASSWORD": "webscale",
+	"PORT": 27017
+    },
+    "PHASE_NOTIFICATION": {
+        "TABOOT_URL":  "http://example.com/taboot/%s/",
+        "TOPIC": "notify.irc" ,
+        "TARGET": ["#achannel", "someperson"]
+
+    }
 }
 connection = mock.MagicMock('connection')
 CORR_ID = 12345
@@ -54,11 +73,11 @@ class TestAMQP(TestCase):
         """
         with mock.patch('pika.ConnectionParameters'):
             with mock.patch('pika.SelectConnection'):
-                result = amqp.init_amqp(MQ)
+                result = amqp.init_amqp(CONF)
                 call_args = pika.ConnectionParameters.call_args_list[0][1]
-                assert call_args['host'] == MQ['SERVER']
-                call_args['credentials'].username == MQ['NAME']
-                call_args['credentials'].password == MQ['PASSWORD']
+                assert call_args['host'] == CONF['MQ']['SERVER']
+                call_args['credentials'].username == CONF['MQ']['NAME']
+                call_args['credentials'].password == CONF['MQ']['PASSWORD']
 
                 pika.SelectConnection.assert_called_once_with(
                     parameters=mock.ANY,
@@ -86,15 +105,40 @@ class TestAMQP(TestCase):
 
             # Verify expected calls
             channel.exchange_declare.assert_called_once_with(
-                exchange=MQ['EXCHANGE'],
+                exchange=CONF['MQ']['EXCHANGE'],
                 durable=True,
                 exchange_type='topic')
 
             channel.basic_consume.assert_called_once_with(
                 amqp.receive,
-                queue=MQ['QUEUE'])
+                queue=CONF['MQ']['QUEUE'])
 
             assert result == consumer_tag
+
+    def test_send_notification(self):
+        """
+        Make sure that send_notification sends the proper message to the bus.
+        """
+        
+        with mock.patch('pika.connection.channel') as channel:
+            amqp.send_notification(
+                channel,
+                'notify.test',
+                '123456',
+                ['someone'],
+                'started',
+                'my message')
+ 
+            expected_body = json.dumps({
+                'slug': 'my message',
+                'message': 'my message',
+                'phase': 'started',
+                'target': ['someone'],
+            })
+
+            assert channel.basic_publish.call_count == 1
+            assert channel.basic_publish.call_args[1]['routing_key'] == 'notify.test'
+            assert channel.basic_publish.call_args[1]['body'] == expected_body
 
     def test_job_create(self):
         """

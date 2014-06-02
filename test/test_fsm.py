@@ -79,7 +79,8 @@ class TestFsm(TestCase):
         self.assertEqual(f.reply_queue, temp_queue, msg="Expected %s for reply_queue, instead got %s" %
                          (temp_queue, f.reply_queue))
 
-    def test__setup(self):
+    @mock.patch('recore.fsm.recore.amqp.send_notification')
+    def test__setup(self, send_notification):
         """Setup works with an existing state document"""
         f = FSM(state_id)
         # An AMQP connection hasn't been made yet
@@ -99,6 +100,10 @@ class TestFsm(TestCase):
 
                 f._setup()
                 assert f.project == _state['project']
+
+        # At the very end a notification should go out no matter what
+        assert send_notification.call_count == 1
+        assert send_notification.call_args[0][4] == 'started'
 
     def test__setup_lookup_state_none(self):
         """if lookup_state returns None then a LookupError is raised"""
@@ -135,7 +140,8 @@ class TestFsm(TestCase):
                 with self.assertRaises(pika.exceptions.AMQPError):
                     f._setup()
 
-    def test__cleanup(self):
+    @mock.patch('recore.fsm.recore.amqp.send_notification')
+    def test__cleanup(self, send_notification):
         """Cleanup erases the needful"""
         f = FSM(state_id)
         f.ch = mock.Mock(pika.channel.Channel)
@@ -161,17 +167,27 @@ class TestFsm(TestCase):
             f.conn.close.assert_called_once_with()
             f.ch.queue_delete.assert_called_once_with(queue=temp_queue)
 
-    def test__cleanup_failed(self):
+        # At the very end a notification should go out no matter what
+        assert send_notification.call_count == 1
+        assert send_notification.call_args[0][4] == 'completed'
+
+    @mock.patch('recore.fsm.recore.amqp.send_notification')
+    def test__cleanup_failed(self, send_notification):
         """Cleanup fails if update_state raises"""
         f = FSM(state_id)
         f.ch = mock.Mock(pika.channel.Channel)
         f.conn = mock.Mock(pika.connection.Connection)
+        f.failed = True  # Testing the fail notification too
 
         with mock.patch.object(f, 'update_state',
                                mock.Mock(side_effect=Exception("derp"))) as (
                 us_exception):
             with self.assertRaises(Exception):
                 f._cleanup()
+
+        # At the very end a notification should go out no matter what
+        assert send_notification.call_count == 1
+        assert send_notification.call_args[0][4] == 'failed'
 
     def test_update_state(self):
         """State updating does the needful"""

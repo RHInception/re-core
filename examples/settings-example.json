@@ -16,5 +16,10 @@
 	"NAME": "lordmongo",
 	"PASSWORD": "webscale",
 	"PORT": 27017
+    },
+    "PHASE_NOTIFICATION": {
+        "TABOOT_URL":  "http://example.com/taboot/%s/",
+        "TOPIC": "notify.irc" ,
+        "TARGET": ["#achannel", "someperson"]
     }
 }
