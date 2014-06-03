@@ -95,7 +95,7 @@ def send_notification(ch, routing_key, state_id, target, phase, message):
     props.correlation_id = state_id
 
     ch.basic_publish(
-        exchange='',
+        exchange=MQ_CONF['EXCHANGE'],
         routing_key=routing_key,
         body=json.dumps(msg),
         properties=props)
