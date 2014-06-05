@@ -9,6 +9,7 @@ script:
     - "nosetests -v --with-cover --cover-min-percentage=80 --cover-package=recore test/"
 notifications:
     email: false
+    flowdock: 252ee174a64c87d75f2846cf694ecad6
 branches:
     only:
         - master
