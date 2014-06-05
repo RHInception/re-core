@@ -23,7 +23,7 @@
 
 
 NAME := re-core
-RPMSPECDIR := .
+RPMSPECDIR := ./contrib/rpm/
 RPMSPEC := $(RPMSPECDIR)/re-core.spec
 
 sdist: clean
