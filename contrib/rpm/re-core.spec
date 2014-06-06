@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.2
-Release: 1-2%{?dist}
+Release: 2%{?dist}
 
 Group: Applications/System
 License: AGPLv3
