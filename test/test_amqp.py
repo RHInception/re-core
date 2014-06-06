@@ -119,7 +119,7 @@ class TestAMQP(TestCase):
         """
         Make sure that send_notification sends the proper message to the bus.
         """
-        
+
         with mock.patch('pika.connection.channel') as channel:
             amqp.send_notification(
                 channel,
@@ -128,7 +128,7 @@ class TestAMQP(TestCase):
                 ['someone'],
                 'started',
                 'my message')
- 
+
             expected_body = json.dumps({
                 'slug': 'my message',
                 'message': 'my message',
@@ -144,9 +144,11 @@ class TestAMQP(TestCase):
         """
         Verify when topic job.create is received the FSM handles it properly
         """
-        project = 'testproject'
-        body = '{"project": "%s", "dynamic": {}}' % project
+        group = 'testgroup'
         release_id = 12345
+        playbook_id = "555544443333222211110000"
+        body = '{"group": "%s", "dynamic": {}, "playbook_id": "%s"}' % (
+            group, playbook_id)
 
         method = mock.MagicMock(routing_key='job.create')
         with mock.patch('recore.job.create') as amqp.recore.job.create:
@@ -154,7 +156,7 @@ class TestAMQP(TestCase):
             with mock.patch('recore.fsm') as amqp.recore.fsm:
                 with mock.patch(
                         'recore.amqp.recore.job.create.recore.mongo'):
-                    amqp.recore.job.create.recore.mongo.lookup_project = (
+                    amqp.recore.job.create.recore.mongo.lookup_playbook = (
                         mock.MagicMock(return_value={''}))
 
                     # Make the call
@@ -162,7 +164,7 @@ class TestAMQP(TestCase):
 
                     # Verify the items which should have triggered
                     amqp.recore.job.create.release.assert_called_once_with(
-                        channel, project, REPLY_TO, {})
+                        channel, playbook_id, REPLY_TO, {})
                     # Verify a new thread of the FSM is started for
                     # this one specific release
                     amqp.recore.fsm.FSM.call_count == 1
@@ -172,7 +174,7 @@ class TestAMQP(TestCase):
         Verify when topic job.create is received with bad data it's
         handled properly
         """
-        project = 'testproject'
+        group = 'testgroup'
         body = '{"bad": "data"}'
         release_id = 12345
 
@@ -182,7 +184,7 @@ class TestAMQP(TestCase):
             with mock.patch('recore.fsm') as amqp.recore.fsm:
                 with mock.patch(
                         'recore.amqp.recore.job.create.recore.mongo'):
-                    amqp.recore.job.create.recore.mongo.lookup_project = (
+                    amqp.recore.job.create.recore.mongo.lookup_playbook = (
                         mock.MagicMock(return_value={''}))
 
                     # Make the call
@@ -199,9 +201,9 @@ class TestAMQP(TestCase):
         """
         When the FSM gets an unknown topic, verify the message is ignored
         """
-        project = 'testproject'
+        group = 'testgroup'
         release_id = 12345
-        body = {"project": project, "status": "completed"}
+        body = {"group": group, "status": "completed"}
         method = mock.MagicMock(routing_key='unknown')
 
         with mock.patch('recore.job.create') as amqp.recore.job.create:
@@ -217,9 +219,9 @@ class TestAMQP(TestCase):
         """
         New job requests with invalid json don't crash the FSM
         """
-        project = 'testproject'
+        group = 'testgroup'
         release_id = 12345
-        body = '{"project": %s, "status": "completed"' % project
+        body = '{"group": %s, "status": "completed"' % group
         method = mock.MagicMock(routing_key='job.create')
 
         with mock.patch('recore.job.create') as amqp.recore.job.create:

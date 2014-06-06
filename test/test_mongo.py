@@ -56,7 +56,7 @@ class TestMongo(TestCase):
             assert result[0] == connection
             assert result[1] == connection[db]
 
-    def test_lookup_project(self):
+    def test_lookup_playbook(self):
         """
         Make sure looking up projects follows the correct path
         """
@@ -64,16 +64,17 @@ class TestMongo(TestCase):
         collection = mock.MagicMock()
         collection.find_one = mock.MagicMock(return_value={"data": "here"})
         db.__getitem__.return_value = collection
+        playbook = '555544443333222211110000'
 
         # With result
-        assert mongo.lookup_project(db, "project") == {"data": "here"}
+        assert mongo.lookup_playbook(db, playbook) == {"data": "here"}
 
         # No result
         collection.find_one = mock.MagicMock(return_value=None)
-        assert mongo.lookup_project(db, "project") is None
+        assert mongo.lookup_playbook(db, playbook) is None
 
         # Error result is {}
-        assert mongo.lookup_project({}, "project") == {}
+        assert mongo.lookup_playbook({}, playbook) == {}
 
     def test_initialize_state(self):
         """
@@ -83,13 +84,16 @@ class TestMongo(TestCase):
         collection = mock.MagicMock()
         collection.insert = mock.MagicMock(return_value=12345)
         db.__getitem__.return_value = collection
-        project = 'testproject'
+        group = 'testgroup'
 
-        with mock.patch('recore.mongo.lookup_project') as (
-                mongo.lookup_project):
-            mongo.lookup_project = mock.MagicMock()
+        with mock.patch('recore.mongo.lookup_playbook') as (
+                mongo.lookup_playbook):
+            mongo.lookup_playbook = mock.MagicMock()
             PLAYBOOK_ID = 1234567
-            mongo.lookup_project.return_value = {'_id': PLAYBOOK_ID}
+            mongo.lookup_playbook.return_value = {
+                '_id': PLAYBOOK_ID,
+                'group': group
+            }
 
             with mock.patch('recore.mongo.datetime.datetime') as (
                     mongo.datetime.datetime):
@@ -97,14 +101,14 @@ class TestMongo(TestCase):
                 mongo.datetime.datetime.utcnow = mock.MagicMock(
                     return_value=UTCNOW)
 
-                mongo.initialize_state(db, project, dynamic={})
+                mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
                 db['state'].insert.assert_called_once_with({
                     'failed': False,
                     'created': UTCNOW,
                     'completed_steps': [],
                     'dynamic': {},
                     'remaining_steps': [],
-                    'project': project,
+                    'group': group,
                     'ended': None,
                     'active_step': {},
                     'reply_to': None,
@@ -122,8 +126,8 @@ class TestMongo(TestCase):
         collection.insert = mock.MagicMock(
             side_effect=pymongo.errors.PyMongoError('test error'))
         db.__getitem__.return_value = collection
-        project = 'testproject'
+        playbook = '555544443333222211110000'
 
         # We should get a PyMongoError
         self.assertRaises(
-            pymongo.errors.PyMongoError, mongo.initialize_state, db, project)
+            pymongo.errors.PyMongoError, mongo.initialize_state, db, playbook)

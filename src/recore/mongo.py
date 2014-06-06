@@ -115,8 +115,7 @@ def initialize_state(d, playbook, dynamic={}):
     out = logging.getLogger('recore')
 
     _playbook = lookup_playbook(d, playbook)
-    project_steps = _playbook.get('steps', [])
-    playbook_id = _playbook['_id']
+    project_steps = _playbook.get('execution', [])
 
     # TODO: Validate dynamic before inserting state ...
     state0 = recore.constants.NEW_STATE_RECORD.copy()
@@ -125,7 +124,7 @@ def initialize_state(d, playbook, dynamic={}):
         'group': _playbook['group'],
         'dynamic': dynamic,
         'remaining_steps': project_steps,
-        'playbook_id': playbook_id
+        'playbook_id': playbook
     })
 
     try:

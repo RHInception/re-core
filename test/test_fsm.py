@@ -32,7 +32,7 @@ temp_queue = 'amqp-test_queue123'
 state_id = "123456abcdef"
 fsm__id = {'_id': ObjectId(state_id)}
 _state = {
-    'project': 'example project',
+    'group': 'example project',
     'dynamic': {},
     'completed_steps': [],
     'active_step': {},
@@ -99,7 +99,7 @@ class TestFsm(TestCase):
                 mongo.lookup_state.return_value = _state
 
                 f._setup()
-                assert f.project == _state['project']
+                assert f.group == _state['group']
 
         # At the very end a notification should go out no matter what
         assert send_notification.call_count == 1
@@ -292,7 +292,7 @@ class TestFsm(TestCase):
         f = FSM(state_id)
         f.reply_queue = temp_queue
 
-        f.project = "mock tests"
+        f.group = "mock tests"
         f.dynamic = {}
         f.active = {
             'plugin': 'fake',
@@ -339,7 +339,7 @@ class TestFsm(TestCase):
             ) as (lookup_state, database):
 
             lookup_state.return_value = {
-                'project': 'PROJECT',
+                'group': 'PROJECT',
                 'dynamic': {},
                 'completed_steps': [],
                 'active_step': 'active_step',
@@ -347,6 +347,7 @@ class TestFsm(TestCase):
             }
             f = FSM(state_id)
             f.reply_queue = temp_queue
+            f.group = 'GROUP'
 
             consume_iter = [
                 (mock.Mock(name="method_mocked"),

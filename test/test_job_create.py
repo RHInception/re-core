@@ -56,7 +56,7 @@ class TestJobCreate(TestCase):
 
         with mock.patch(
                 'recore.job.create.recore.mongo') as create.recore.mongo:
-            create.recore.mongo.lookup_project = mock.MagicMock(
+            create.recore.mongo.lookup_playbook = mock.MagicMock(
                 return_value={})
 
             assert create.release(channel, 'test', 'replyto', {}) is None
