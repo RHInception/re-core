@@ -89,7 +89,7 @@ a project's release steps."""
 
         params = self.active['parameters']
         msg = {
-            'project': self.project,
+            'group': self.group,
             'parameters': params,
             'dynamic': self.dynamic
         }
@@ -303,7 +303,7 @@ a project's release steps."""
             self.app_logger.error("Couldn't connect to AMQP")
             raise e
 
-        self.project = self.state['project']
+        self.group = self.state['group']
         self.dynamic.update(self.state['dynamic'])
         self.completed = self.state['completed_steps']
         self.active = self.state['active_step']
@@ -311,6 +311,9 @@ a project's release steps."""
         self.db = recore.mongo.database
         self.state_coll = self.db['state']
 
+        # TODO: Put this some where it will be only called once. This
+        # will get called on every step that starts because _setup()
+        # is called each time the _run() method is ran.
         recore.amqp.send_notification(
             self.ch,
             recore.amqp.CONF['PHASE_NOTIFICATION']['TOPIC'],

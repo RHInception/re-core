@@ -124,15 +124,19 @@ def receive(ch, method, properties, body):
         try:
             # We need to get the name of the temporary
             # queue to respond back on.
-            notify.info("new job create for: %s" % msg['project'])
+            notify.info("new job create for: %s" % msg['group'])
             out.info(
                 "New job requested, starting release "
-                "process for %s ..." % msg["project"])
+                "process for %s ..." % msg["group"])
             notify.debug("Job message: %s" % msg)
             reply_to = properties.reply_to
 
+            # We do this lookup even though we have the ID
+            # already. This is a sanity-check really to make sure we
+            # were passed a valid playbook id.
             id = recore.job.create.release(
-                ch, msg['project'], reply_to, msg.get('dynamic', {}))
+                ch, msg['playbook_id'], reply_to,
+                msg.get('dynamic', {}))
         except KeyError, ke:
             notify.info("Missing an expected key in message: %s" % ke)
             out.error("Missing an expected key in message: %s" % ke)

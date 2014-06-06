@@ -16,7 +16,7 @@
 
 NEW_STATE_RECORD = {
     'reply_to': None,
-    'project': None,
+    'group': None,
     'created': None,
     'ended': None,
     'failed': False,

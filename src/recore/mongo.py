@@ -56,24 +56,28 @@ def connect(host, port, user, password, db):
     return (connection, db)
 
 
-def lookup_project(d, project):
-    """Given a mongodb database, `d`, search the 'projects' collection for
-any documents which match the `project` key provided. `search_result`
-is either a hash or `None` if no matches were found.
+def lookup_playbook(d, pbid):
+    """Given a mongodb database, `d`, search the 'playbooks' collection
+for a document with the given `pbid`. `search_result` is either a hash
+or `None` if no matches were found.
     """
     out = logging.getLogger('recore')
     try:
         # TODO: make this a config var
-        projects = d['playbooks']
-        search_result = projects.find_one({'project': project})
+        groups = d['playbooks']
+        filter = {
+            '_id': ObjectId(str(pbid))
+        }
+        search_result = groups.find_one(filter)
+
         if search_result:
-            out.debug("Found project definition: %s" % project)
+            out.debug("Found playbook definition: %s" % pbid)
         else:
-            out.debug("No definition for project: %s" % project)
+            out.debug("No result found for playbook: %s" % pbid)
         return search_result
     except KeyError, kex:
         out.error(
-            "KeyError raised while trying to look up a project: %s."
+            "KeyError raised while trying to look up a playbook: %s."
             "Returning {}" % kex)
         return {}
 
@@ -96,7 +100,7 @@ MongoDB.
     return project_state
 
 
-def initialize_state(d, project, dynamic={}):
+def initialize_state(d, playbook, dynamic={}):
     """Initialize the state of a given project release"""
     # Just record the name now and insert an empty array to record the
     # result of steps. Oh, and when it started. Maybe we'll even add
@@ -110,15 +114,15 @@ def initialize_state(d, project, dynamic={}):
     # which when `str`'d returns a reasonable value.
     out = logging.getLogger('recore')
 
-    _project = lookup_project(d, project)
-    project_steps = _project.get('steps', [])
-    playbook_id = _project['_id']
+    _playbook = lookup_playbook(d, playbook)
+    project_steps = _playbook.get('steps', [])
+    playbook_id = _playbook['_id']
 
     # TODO: Validate dynamic before inserting state ...
     state0 = recore.constants.NEW_STATE_RECORD.copy()
     state0.update({
         'created': datetime.datetime.utcnow(),
-        'project': project,
+        'group': _playbook['group'],
         'dynamic': dynamic,
         'remaining_steps': project_steps,
         'playbook_id': playbook_id

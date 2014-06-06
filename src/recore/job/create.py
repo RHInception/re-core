@@ -14,13 +14,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-This is where we create new jobs
+"""This is where we create new jobs
 
-FSM will get {"project": "$NAME"} with the topic of job.create and
-a reply_to set
+FSM will get {"group": "$NAME", "playbook_id": "LONG_MONGODB_STRING"}
+on the topic of job.create and a reply_to set
 
-it expects a message with {"id": $an_int_here} back to the reply_to.
+it sends a message with {"id": "MONGO_STATE_DOCUMENT"} back to the
+reply_to.
 """
 
 import recore.utils
@@ -28,14 +28,14 @@ import recore.mongo
 import logging
 
 
-def release(ch, project, reply_to, dynamic):
+def release(ch, playbook, reply_to, dynamic):
     """`ch` is an open AMQP channel
 
-    `project` is the name of a project to begin a release for.
+    `playbook` is the _id of a playbook to begin a release for.
     `reply_to` is a temporary channel
     `dynamic` is a dict storing dynamic input -- default is {}
 
-Reference the project name against the database to retrieve a list of
+Reference the playbook name against the database to retrieve a list of
 release steps to execute.
 
 We then generate a correlation_id by inserting a new document into the
@@ -46,22 +46,22 @@ Once we have a state document we are ready to initialize another FSM
 instance with that document ID."""
     out = logging.getLogger('recore')
     notify = logging.getLogger('recore.stdout')
-    out.debug("Checking mongo for info on project %s" % project)
+    out.debug("Checking mongo for info on playbook %s" % playbook)
     notify.debug(
         "new job submitted from rest for %s. Need to look it up "
-        "first in mongo" % project)
+        "first in mongo" % playbook)
     mongo_db = recore.mongo.database
-    project_exists = recore.mongo.lookup_project(mongo_db, project)
+    playbook_exists = recore.mongo.lookup_playbook(mongo_db, playbook)
 
-    out.debug("Mongo query to get info on %s finished" % project)
-    notify.debug("looked up project: %s" % project)
+    out.debug("Mongo query to get info on %s finished" % playbook)
+    notify.debug("looked up playbook: %s" % playbook)
 
-    if project_exists:
+    if playbook_exists:
         # Initialize state and include the dynamic items
-        id = str(recore.mongo.initialize_state(mongo_db, project, dynamic))
-        out.debug("State created for '%s' in mongo with id: %s" % (project, id))
+        id = str(recore.mongo.initialize_state(mongo_db, playbook, dynamic))
+        out.debug("State created for '%s' in mongo with id: %s" % (playbook, id))
     else:
-        out.error("Project %s does not exists in mongo" % project)
+        out.error("Playbook %s does not exists in mongo" % playbook)
         id = None
         return id
 
@@ -72,7 +72,7 @@ instance with that document ID."""
                      routing_key=reply_to,
                      body=body)
     out.info("Emitted message to start new release for %s. Job id: %s" % (
-        project, str(id)))
+        playbook, str(id)))
     notify.info("Emitted message to start new release for %s. Job id: %s" % (
-        project, str(id)))
+        playbook, str(id)))
     return id
