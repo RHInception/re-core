@@ -18,6 +18,7 @@ Url: https://github.com/rhinception/re-core
 
 BuildArch: noarch
 BuildRequires: python2-devel
+BuildRequires: python-setuptools
 # BuildRequires: python-nose
 # %{?el6:BuildRequires: python-unittest2}
 
@@ -48,6 +49,9 @@ release step. Execution is delegated to the worker component.
 %doc README.md LICENSE AUTHORS
 
 %changelog
+* Fri Jun 6  2014 Ryan Cook <rcook@redhat.com> - 0.0.2-2
+- Added python-setuptools
+
 * Mon Apr 28 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.2-1
 - Now with proper working state machine
 
