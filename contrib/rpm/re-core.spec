@@ -8,7 +8,7 @@
 
 Name: re-core
 Summary: FSM of the Inception Release Engine
-Version: 0.0.2
+Version: 0.0.2-2
 Release: 1%{?dist}
 
 Group: Applications/System
