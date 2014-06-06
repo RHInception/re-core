@@ -235,17 +235,18 @@ a project's release steps."""
         if not self.failed:
             status = 'completed'
 
-        recore.amqp.send_notification(
-            self.ch,
-            recore.amqp.CONF['PHASE_NOTIFICATION']['TOPIC'],
-            self.state_id,
-            recore.amqp.CONF['PHASE_NOTIFICATION']['TARGET'],
-            status,
-            'Release %s %s. See %s.' % (
+        if recore.amqp.CONF.get('PHASE_NOTIFICATION', None):
+            recore.amqp.send_notification(
+                self.ch,
+                recore.amqp.CONF['PHASE_NOTIFICATION']['TOPIC'],
                 self.state_id,
+                recore.amqp.CONF['PHASE_NOTIFICATION']['TARGET'],
                 status,
-                recore.amqp.CONF['PHASE_NOTIFICATION']['TABOOT_URL'] % (
-                    self.state_id)))
+                'Release %s %s. See %s.' % (
+                    self.state_id,
+                    status,
+                    recore.amqp.CONF['PHASE_NOTIFICATION']['TABOOT_URL'] % (
+                        self.state_id)))
 
         self.ch.queue_delete(queue=self.reply_queue)
         self.app_logger.debug("Deleted AMQP queue: %s" % self.reply_queue)
@@ -314,13 +315,14 @@ a project's release steps."""
         # TODO: Put this some where it will be only called once. This
         # will get called on every step that starts because _setup()
         # is called each time the _run() method is ran.
-        recore.amqp.send_notification(
-            self.ch,
-            recore.amqp.CONF['PHASE_NOTIFICATION']['TOPIC'],
-            self.state_id,
-            recore.amqp.CONF['PHASE_NOTIFICATION']['TARGET'],
-            'started',
-            'Release %s started. See %s.' % (
+        if recore.amqp.CONF.get('PHASE_NOTIFICATION', None):
+            recore.amqp.send_notification(
+                self.ch,
+                recore.amqp.CONF['PHASE_NOTIFICATION']['TOPIC'],
                 self.state_id,
-                recore.amqp.CONF['PHASE_NOTIFICATION']['TABOOT_URL'] % (
-                    self.state_id)))
+                recore.amqp.CONF['PHASE_NOTIFICATION']['TARGET'],
+                'started',
+                'Release %s started. See %s.' % (
+                    self.state_id,
+                    recore.amqp.CONF['PHASE_NOTIFICATION']['TABOOT_URL'] % (
+                        self.state_id)))
