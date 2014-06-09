@@ -86,14 +86,33 @@ a project's release steps."""
         props = pika.spec.BasicProperties()
         props.correlation_id = self.state_id
         props.reply_to = self.reply_queue
+        params = {}
+        self.app_logger.info("Pre-processing next step: %s" % str(self.active_step))
+        if type(self.active_step) == str or \
+           type(self.active_step) == unicode:
+            self.app_logger.info("Next step is a string. Split it and route it")
+            (worker_queue, sep, subcommand) = self.active_step.partition(':')
+        else:
+            self.app_logger.info("Next step is a %s. We have some work to do..." % (
+                type(self.active_step)))
+            self.app_logger.info(self.active_step)
+            _step_key = self.active_step.keys()[0]
+            (worker_queue, sep, subcommand) = _step_key.partition(':')
+            params = self.active_step[_step_key]
 
-        params = self.active['parameters']
+        _params = {
+            'command': worker_queue,
+            'subcommand': subcommand,
+            'hosts': self.active_sequence['hosts']
+        }
+
+        params.update(_params)
         msg = {
             'group': self.group,
             'parameters': params,
             'dynamic': self.dynamic
         }
-        plugin_queue = "worker.%s" % self.active['plugin']
+        plugin_queue = "worker.%s" % worker_queue
 
         # Send message to the worker with instructions and dynamic data
         self.ch.basic_publish(exchange='',
@@ -102,7 +121,8 @@ a project's release steps."""
                               properties=props)
 
         self.app_logger.info("Sent plugin (%s) new job details" % plugin_queue)
-
+        self.app_logger.info("Details: %s" % (
+            str(msg)))
         # Begin consuming from reply_queue
         self.app_logger.debug("Waiting for plugin to update us")
 
@@ -116,7 +136,7 @@ a project's release steps."""
 
         _body = json.loads(body)
         if _body['status'] != 'started':
-            # Lets get off this train. The plugin aborted and we don't
+            # Let's get off this train. The plugin aborted and we don't
             # want to hang around any more. Leave the currently active
             # step where it is, move the remaining steps to 'skipped',
             # and then skip ahead to the on_ended method. Forward our
@@ -124,7 +144,7 @@ a project's release steps."""
             self.app_logger.error(
                 "Received failure/error message from the worker: %s" % (
                     body))
-            self.move_remaining_to_skipped()
+            self.failed = True
             self.on_ended(channel, method_frame, header_frame, body)
         else:
             self.app_logger.info("Plugin 'started' update received. "
@@ -154,58 +174,82 @@ a project's release steps."""
             self._run()
 
     def move_active_to_completed(self):
-        finished_step = self.active
-        self.completed.append(finished_step)
-        self.active = None
+        finished_step = self.active_step
+        self.active_sequence['completed_steps'].append(finished_step)
+        self.active_step = None
 
         _update_state = {
             '$set': {
-                'active_step': self.active,
-                'completed_steps': self.completed
+                'active_step': self.active_step,
+                'active_sequence': self.active_sequence
             }
         }
         self.update_state(_update_state)
-
-    def move_remaining_to_skipped(self):
-        """Most likely an error message has just arrived from a worker
-        and the active step does not allow ignoring errors."""
-
-        self.skipped_steps = self.remaining
-        self.remaining = []
-
-        _update_state = {
-            '$push': {
-                'skipped_steps': {
-                    '$each': self.skipped_steps
-                }
-            },
-            '$set': {
-                'remaining_steps': self.remaining
-            }
-        }
-
-        self.update_state(_update_state)
-        self.app_logger.debug("Moved %s remaining steps into 'skipped_steps'" % len(self.skipped_steps))
-        # We've moved the remaining steps into the skipped steps
-        # list. The next time the FSM loops it will enter its cleanup
-        # method and then terminate.
-
-        # Accept our fate and admit we are a failure (so we can log
-        # this properly in the db)
-        self.failed = True
-        self.app_logger.debug("Recorded failed state in this FSM instance")
-
-        return True
 
     def dequeue_next_active_step(self, to='active_step'):
         """Take the next remaining step off the queue and move it into active
         steps.
         """
-        self.active = self.remaining.pop(0)
+        try:
+            self.active_step = self.active_sequence['steps'].pop(0)
+        except IndexError:
+            # We have exhaused this execution sequence of all release
+            # steps. Time to move on to the next sequence.
+            #
+            # Move the current exec seq into executed.
+            self.app_logger.debug("Ran out of steps in this execution sequence")
+            self.executed.append(self.active_sequence)
+
+            try:
+                self.active_sequence = self.execution.pop(0)
+                self.app_logger.info("Popped another exec seq off the 'execution' stack")
+                self.active_sequence['completed_steps'] = []
+            except IndexError:
+                # An IndexError at this point means that we have
+                # exhaused this playbook of all execution
+                # sequences. In other words, we're done!
+                self.app_logger.info("Ran all execution sequences.")
+                _update_state = {
+                    '$set': {
+                        to: None,
+                        'active_sequence': {},
+                        'executed': self.executed,
+                        'execution': self.execution
+                    }
+                }
+                self.update_state(_update_state)
+                raise IndexError
+            else:
+                # No exceptions means that we successfully loaded the
+                # next execution sequence. Now, let's run this method
+                # again (yo dawg, I heard you like recursion) so we
+                # can pop off the next active step, and update the DB
+                # with the changed active/executed sequences and
+                # steps.
+                #
+                # We'll return from *THIS* call to this method once
+                # the recursion returns so we don't update the
+                # database twice with incorrect information.
+                _update_state = {
+                    '$set': {
+                        to: self.active_step,
+                        'active_sequence': self.active_sequence,
+                        'executed': self.executed,
+                        'execution': self.execution
+                    }
+                }
+                self.update_state(_update_state)
+                self.dequeue_next_active_step()
+                # Once the dequeue call returns we've updated the
+                # active_step and sequence in the database.
+                return
+
         _update_state = {
             '$set': {
-                to: self.active,
-                'remaining_steps': self.remaining
+                to: self.active_step,
+                'active_sequence': self.active_sequence,
+                'executed': self.executed,
+                'execution': self.execution
             }
         }
         self.update_state(_update_state)
@@ -306,9 +350,10 @@ a project's release steps."""
 
         self.group = self.state['group']
         self.dynamic.update(self.state['dynamic'])
-        self.completed = self.state['completed_steps']
-        self.active = self.state['active_step']
-        self.remaining = self.state['remaining_steps']
+        self.active_step = self.state['active_step']
+        self.execution = self.state['execution']
+        self.executed = self.state['executed']
+        self.active_sequence = self.state['active_sequence']
         self.db = recore.mongo.database
         self.state_coll = self.db['state']
 

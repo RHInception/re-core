@@ -20,6 +20,9 @@ import recore.mongo
 import recore.amqp
 import sys
 import pika.exceptions
+import pika.connection
+
+RE_COMPONENT = "RE-CORE"
 
 
 def start_logging(log_file, log_level):
@@ -66,6 +69,7 @@ def main(args):  # pragma: no cover
 
     *Note*: Not covered for unittests as it glues tested code together.
     """
+    pika.connection.PRODUCT = RE_COMPONENT
     import pymongo.errors
 
     config = parse_config(args.config)

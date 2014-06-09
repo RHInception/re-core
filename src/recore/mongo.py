@@ -100,7 +100,7 @@ MongoDB.
     return project_state
 
 
-def initialize_state(d, playbook, dynamic={}):
+def initialize_state(d, pbid, dynamic={}):
     """Initialize the state of a given project release"""
     # Just record the name now and insert an empty array to record the
     # result of steps. Oh, and when it started. Maybe we'll even add
@@ -114,17 +114,24 @@ def initialize_state(d, playbook, dynamic={}):
     # which when `str`'d returns a reasonable value.
     out = logging.getLogger('recore')
 
-    _playbook = lookup_playbook(d, playbook)
-    project_steps = _playbook.get('execution', [])
+    # Look up the to-release playbook
+    _playbook = lookup_playbook(d, pbid)
+    # Pop off the first execution sequence from the playbook
+    # 'execution' item. Set it as the active sequence.
+    _active_sequence = _playbook['execution'].pop(0)
+    # Prime the active sequence to accept completed steps
+    _active_sequence['completed_steps'] = []
 
     # TODO: Validate dynamic before inserting state ...
     state0 = recore.constants.NEW_STATE_RECORD.copy()
     state0.update({
         'created': datetime.datetime.utcnow(),
         'group': _playbook['group'],
+        'playbook_id': pbid,
         'dynamic': dynamic,
-        'remaining_steps': project_steps,
-        'playbook_id': playbook
+        'execution': _playbook['execution'],
+        'executed': [],
+        'active_sequence': _active_sequence
     })
 
     try:

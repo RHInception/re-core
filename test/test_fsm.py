@@ -31,13 +31,59 @@ import pymongo
 temp_queue = 'amqp-test_queue123'
 state_id = "123456abcdef"
 fsm__id = {'_id': ObjectId(state_id)}
-_state = {
-    'group': 'example project',
-    'dynamic': {},
-    'completed_steps': [],
-    'active_step': {},
-    'remaining_steps': []
+_active_step_string = "juicer:Promote"
+_active_step_dict = {
+    "service:Restart": {
+        "service": "megafrobber",
+    }
 }
+_state = {
+    # Meta
+    'reply_to': None,
+    'group': None,
+    'created': None,
+    'ended': None,
+    'failed': False,
+    'dynamic': {},
+    'playbook_id': None,
+    'active_step': None,
+    'execution': [],
+    'executed': [],
+    'active_sequence': {},
+}
+
+def new_active_sequence():
+    return {
+        "hosts": [ "bar.ops.example.com" ],
+        "description": "frobnicate these lil guys",
+        "steps": [
+            "juicer:Promote",
+            {
+                "misc:Echo": {
+                    "input": "This is a test message"
+                }
+            },
+            {
+                "frob:Nicate": {
+                    "things": "all the things",
+                }
+            }
+        ]
+    }
+
+def new_playbook():
+    return {
+        "group": "testgroup",
+        "name": "testname",
+        "execution": [
+            new_active_sequence()
+        ]
+    }
+
+
+
+
+
 UTCNOW = datetime.datetime.utcnow()
 msg_started = {
     "status": "started"
@@ -248,12 +294,17 @@ class TestFsm(TestCase):
     def test_dequeue_next_active_step(self):
         """The FSM can remove the next step and update Mongo with it"""
         f = FSM(state_id)
-        f.remaining = ["Step 1", "Step 2"]
+        f.active_step = _active_step_string
+        f.active_sequence = new_active_sequence()
+        f.executed = []
+        f.execution = new_playbook()['execution']
 
         _update_state = {
             '$set': {
-                'active_step': "Step 1",
-                'remaining_steps': ["Step 2"]
+                'active_step': _active_step_string,
+                'active_sequence': f.active_sequence,
+                'executed': [],
+                'execution': new_playbook()['execution'],
             }
         }
 
@@ -261,28 +312,31 @@ class TestFsm(TestCase):
                 us):
             f.dequeue_next_active_step()
             us.assert_called_once_with(_update_state)
-            self.assertEqual(f.active, "Step 1")
+            self.assertEqual(f.active_step, _active_step_string)
 
     def test_move_active_to_completed(self):
         """FSM can update after completing a step"""
         f = FSM(state_id)
-        active_step = {"plugin": "not real"}
-        f.active = active_step.copy()
-        f.completed = []
+        f.active_step = _active_step_string
+        f.active_sequence = new_active_sequence()
+        f.active_sequence['completed_steps'] = []
+        f.executed = []
+        f.execution = new_playbook()['execution']
+        f.completed_steps = []
 
         # For .called_once_with()
         _update_state = {
             '$set': {
                 'active_step': None,
-                'completed_steps': [active_step]
+                'active_sequence': f.active_sequence
             }
         }
 
         with mock.patch.object(f, 'update_state') as (us):
             f.move_active_to_completed()
             us.assert_called_once_with(_update_state)
-            self.assertEqual(f.active, None)
-            self.assertEqual(f.completed, [active_step])
+            # TODO: Double check what this should evaluate to
+            # self.assertEqual(f.active_sequence['completed_steps'], [active_step])
 
     @mock.patch.object(FSM, 'on_started')
     @mock.patch.object(FSM, 'dequeue_next_active_step')
@@ -294,10 +348,10 @@ class TestFsm(TestCase):
 
         f.group = "mock tests"
         f.dynamic = {}
-        f.active = {
-            'plugin': 'fake',
-            'parameters': {'no': 'parameters'}
-        }
+        f.active_step = _active_step_string
+        f.active_sequence = new_active_sequence()
+        f.execution = new_playbook()['execution']
+
         consume_iter = [(
             mock.Mock(name="method_mocked"),
             mock.Mock(name="properties_mocked"),
@@ -338,13 +392,14 @@ class TestFsm(TestCase):
                 mock.patch('recore.mongo.database')
             ) as (lookup_state, database):
 
-            lookup_state.return_value = {
-                'group': 'PROJECT',
-                'dynamic': {},
-                'completed_steps': [],
-                'active_step': 'active_step',
-                'remaining_steps': [],
-            }
+            lookup_state.return_value = _state.copy()
+            # {
+            #     'group': 'PROJECT',
+            #     'dynamic': {},
+            #     'completed_steps': [],
+            #     'active_step': 'active_step',
+            #     'remaining_steps': [],
+            # }
             f = FSM(state_id)
             f.reply_queue = temp_queue
             f.group = 'GROUP'

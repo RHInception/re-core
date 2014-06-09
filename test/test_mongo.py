@@ -27,6 +27,35 @@ from recore import mongo
 UTCNOW = datetime.datetime.utcnow()
 connection = mock.MagicMock('connection')
 
+def new_active_sequence():
+    return {
+        "hosts": [ "bar.ops.example.com" ],
+        "description": "frobnicate these lil guys",
+        "steps": [
+            "bigip:OutOfRotation",
+            {
+                "misc:Echo": {
+                    "input": "This is a test message"
+                }
+            },
+            {
+                "frob:Nicate": {
+                    "things": "all the things",
+                }
+            }
+        ]
+    }
+
+
+def new_playbook():
+    return {
+        "group": "testgroup",
+        "name": "testname",
+        "execution": [
+            new_active_sequence()
+        ]
+    }
+
 
 class TestMongo(TestCase):
 
@@ -90,10 +119,7 @@ class TestMongo(TestCase):
                 mongo.lookup_playbook):
             mongo.lookup_playbook = mock.MagicMock()
             PLAYBOOK_ID = 1234567
-            mongo.lookup_playbook.return_value = {
-                '_id': PLAYBOOK_ID,
-                'group': group
-            }
+            mongo.lookup_playbook.return_value = new_playbook()
 
             with mock.patch('recore.mongo.datetime.datetime') as (
                     mongo.datetime.datetime):
@@ -103,17 +129,27 @@ class TestMongo(TestCase):
 
                 mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
                 db['state'].insert.assert_called_once_with({
+                    'executed': [],
+                    'group': group,
                     'failed': False,
                     'created': UTCNOW,
-                    'completed_steps': [],
                     'dynamic': {},
-                    'remaining_steps': [],
-                    'group': group,
+                    'active_sequence':
+                    {
+                        'steps': [
+                                'bigip:OutOfRotation',
+                            {'misc:Echo': {'input': 'This is a test message'}},
+                            {'frob:Nicate': {'things': 'all the things'}}
+                        ],
+                        'completed_steps': [],
+                        'hosts': ['bar.ops.example.com'],
+                        'description': 'frobnicate these lil guys'
+                    },
                     'ended': None,
-                    'active_step': {},
+                    'active_step': None,
                     'reply_to': None,
-                    'playbook_id': PLAYBOOK_ID,
-                    'skipped_steps': []
+                        'execution': [],
+                    'playbook_id': PLAYBOOK_ID
                 })
 
     def test_initialize_state_with_error(self):

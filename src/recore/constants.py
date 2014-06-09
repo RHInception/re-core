@@ -15,15 +15,22 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 NEW_STATE_RECORD = {
+    # Meta
     'reply_to': None,
     'group': None,
     'created': None,
     'ended': None,
     'failed': False,
     'dynamic': {},
-    'completed_steps': [],
-    'active_step': {},
-    'remaining_steps': [],
-    'skipped_steps': [],
-    'playbook_id': None
+    'playbook_id': None,
+
+    # Running (or about to/just ran) step
+    'active_step': None,
+
+    # All execution sequences, from the playbook
+    'execution': [],
+    # Completed execution sequences
+    'executed': [],
+    # Currently running sequence
+    'active_sequence': {},
 }
