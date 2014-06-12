@@ -87,6 +87,7 @@ a project's release steps."""
         props.correlation_id = self.state_id
         props.reply_to = self.reply_queue
         params = {}
+        notify = {}
         self.app_logger.info("Pre-processing next step: %s" % str(self.active_step))
         if type(self.active_step) == str or \
            type(self.active_step) == unicode:
@@ -99,6 +100,7 @@ a project's release steps."""
             _step_key = self.active_step.keys()[0]
             (worker_queue, sep, subcommand) = _step_key.partition(':')
             params = self.active_step[_step_key]
+            notify.update(self.active_step.get('notify', {}))
 
         _params = {
             'command': worker_queue,
@@ -110,7 +112,8 @@ a project's release steps."""
         msg = {
             'group': self.group,
             'parameters': params,
-            'dynamic': self.dynamic
+            'dynamic': self.dynamic,
+            'notify': notify
         }
         plugin_queue = "worker.%s" % worker_queue
 
