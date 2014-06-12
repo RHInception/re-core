@@ -20,11 +20,11 @@ import sys
 from distutils.core import setup
 
 try:
-        from setuptools import setup, find_packages
+    from setuptools import setup, find_packages
 except ImportError:
-        import warnings
-            warnings.warn('No setuptools. Script creation will be skipped.')
-                from distutils.core import setup
+    import warnings
+    warnings.warn('No setuptools. Script creation will be skipped.')
+    from distutils.core import setup
 
 setup(
     name='re-core',
