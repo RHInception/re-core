@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.2
-Release: 2%{?dist}
+Release: 3%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -49,6 +49,9 @@ release step. Execution is delegated to the worker component.
 %doc README.md LICENSE AUTHORS
 
 %changelog
+* Fri Jun 13 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.2-3
+- Send messages by topics rather than straight to queues
+
 * Fri Jun 6  2014 Ryan Cook <rcook@redhat.com> - 0.0.2-2
 - Added python-setuptools and fixed version
 
