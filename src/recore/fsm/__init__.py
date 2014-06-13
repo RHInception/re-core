@@ -118,7 +118,8 @@ a project's release steps."""
         plugin_queue = "worker.%s" % worker_queue
 
         # Send message to the worker with instructions and dynamic data
-        self.ch.basic_publish(exchange='',
+        _exchange = recore.amqp.MQ_CONF['EXCHANGE']
+        self.ch.basic_publish(exchange=_exchange,
                               routing_key=plugin_queue,
                               body=json.dumps(msg),
                               properties=props)
