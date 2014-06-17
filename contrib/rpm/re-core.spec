@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.2
-Release: 3%{?dist}
+Release: 4%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -19,6 +19,8 @@ Url: https://github.com/rhinception/re-core
 BuildArch: noarch
 BuildRequires: python2-devel
 BuildRequires: python-setuptools
+Requires: python-pymongo
+Requires: python-pika
 # BuildRequires: python-nose
 # %{?el6:BuildRequires: python-unittest2}
 
@@ -49,6 +51,9 @@ release step. Execution is delegated to the worker component.
 %doc README.md LICENSE AUTHORS
 
 %changelog
+* Tue Jun 17 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.2-4
+- Add missing Requires
+
 * Fri Jun 13 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.2-3
 - Send messages by topics rather than straight to queues
 
