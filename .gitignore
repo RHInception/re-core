@@ -39,3 +39,4 @@ nosetests.xml
 recore.log
 htmlcov
 MANIFEST
+re-coreenv/
