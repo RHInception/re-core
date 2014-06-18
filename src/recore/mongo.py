@@ -101,21 +101,24 @@ MongoDB.
 
 
 def initialize_state(d, pbid, dynamic={}):
-    """Initialize the state of a given project release"""
-    # Just record the name now and insert an empty array to record the
-    # result of steps. Oh, and when it started. Maybe we'll even add
-    # who started it later!
-    #
-    # We expect this to return an ObjectID object. We don't care so
-    # much about what we're `insert`ing into the state collection. `d`
-    # would be a Mongo database object, but we can't unittest with a
-    # real one, so we need mock one up, give a string for the project
-    # name, and make sure the insert method returns a mocked ObjectID
-    # which when `str`'d returns a reasonable value.
+    """Initialize the state of a given project release
+
+#. Lookup the playbook
+#. Prep the: active sequence, fill in 'completed_steps' with []
+#. Copy the template state record
+#. Expand sequences
+#. Update the record with items specific to this playbook
+#. Insert the new state record
+#. Return the ID"""
+
     out = logging.getLogger('recore')
 
     # Look up the to-release playbook
     _playbook = lookup_playbook(d, pbid)
+
+    # Expand sequences = duplicate sequences for each host in the
+    # sequence. Set hosts to just that one host.
+    _playbook['execution'] = expand_sequences(_playbook['execution'])
     # Pop off the first execution sequence from the playbook
     # 'execution' item. Set it as the active sequence.
     _active_sequence = _playbook['execution'].pop(0)
@@ -150,3 +153,30 @@ def escape_credentials(n, p):
     """Return the RFC 2396 escaped version of name `n` and password `p` in
 a 2-tuple"""
     return (urllib.quote(n), urllib.quote(p))
+
+
+def expand_sequences(execution):
+    """For each SEQUENCE in EXECUTION SEQUENCES, For each HOST in
+    SEQUENCE, duplicate the SEQUENCE, and then set the 'hosts' key
+    to HOST.
+
+    E.g., Given a playbook with one execution sequence, with 2
+    hosts defined, foo.com and bar.com, the result is: two
+    execution sequences, one with hosts = foo.com, one with
+    hosts=bar.com.
+
+    Parameters:
+    #. 'execution' - A list of execution sequences
+
+    Returns: the new (expanded) sequences as a list
+    """
+    expanded_sequences = []
+    original_sequences = execution
+    for sequence in original_sequences:
+        # Loop over each sequence
+        for host in sequence['hosts']:
+            # Loop over each host in this sequence
+            _new_sequence = sequence.copy()
+            _new_sequence['hosts'] = [host]
+            expanded_sequences.append(_new_sequence)
+    return expanded_sequences

@@ -28,7 +28,7 @@ import pymongo.errors
 
 class FSM(threading.Thread):
     """The re-core Finite State Machine to oversee the execution of
-a project's release steps."""
+a playbooks's release steps."""
 
     def __init__(self, state_id, *args, **kwargs):
         """Not really overriding the threading init method. Just describing
@@ -52,6 +52,7 @@ a project's release steps."""
         self.conn = None
         self.state_id = state_id
         self._id = {'_id': ObjectId(self.state_id)}
+        self.initialized = False
         self.state = {}
         self.dynamic = {}
         self.reply_queue = None
@@ -191,8 +192,51 @@ a project's release steps."""
         self.update_state(_update_state)
 
     def dequeue_next_active_step(self, to='active_step'):
-        """Take the next remaining step off the queue and move it into active
-        steps.
+        """Take the next remaining step/sequence off the queue and move it
+        into active step/sequence.
+
+        Discussion: this method does the work required to iterate over
+        the execution steps stored in N-many execution
+        sequences. Quick review:
+
+        A playbook consists of several elements, relevant to this
+        discussion, is the 'execution' element. The value of
+        'execution' is a list. Each item in the list is a dictionary
+        describing an 'execution sequence', i.e., execution steps
+        accompanied by supporting meta-data (what hosts to run them
+        on, a description, etc...)
+
+        Each execution sequence dict contains an element, 'steps',
+        which is a list. If you're into visually representing
+        datastructures, then a playbook with two execution sequences
+        would look like this (omitting irrelevant keys):
+
+        playbook = {
+            'execution': [
+                { 'steps': [ 'step1`, 'step2', ... ] },
+                { 'steps': [ 'step1`, 'step2', ... ] }
+            ]
+        }
+
+        The FSM initial state is pretty much undefined. Once _run() is
+        called from run() we process the initial setup steps (such as
+        querying the DB for the state document). This initializes the
+        FSM.
+
+        From there we can think of the routine as basically a directed
+        graph where we cycle through _run() to
+        dequeue_next_active_step (where we pop/push steps/sequences
+        off of/on to the remaining/completed steps/sequences stacks),
+        on_started, on_ended, and finally _run() again. This continues
+        until the acceptance condition is met: A release is completed
+        If And Only If no more steps remain in the active execution
+        sequence, AND no more execution sequences remain.
+
+        TODO: Fill in remaining logic discussion.
+
+        TODO: Update logic to handle 'preflight' sections and the
+        required concurrency.
+
         """
         try:
             self.active_step = self.active_sequence['steps'].pop(0)
@@ -222,6 +266,8 @@ a project's release steps."""
                     }
                 }
                 self.update_state(_update_state)
+                # Caught in the _run() method. Signals that we're
+                # ready to _cleanup().
                 raise IndexError
             else:
                 # No exceptions means that we successfully loaded the
@@ -364,7 +410,7 @@ a project's release steps."""
         # TODO: Put this some where it will be only called once. This
         # will get called on every step that starts because _setup()
         # is called each time the _run() method is ran.
-        if recore.amqp.CONF.get('PHASE_NOTIFICATION', None):
+        if recore.amqp.CONF.get('PHASE_NOTIFICATION', None) and not self.initialized:
             recore.amqp.send_notification(
                 self.ch,
                 recore.amqp.CONF['PHASE_NOTIFICATION']['TOPIC'],
@@ -374,4 +420,7 @@ a project's release steps."""
                 'Release %s started. See %s.' % (
                     self.state_id,
                     recore.amqp.CONF['PHASE_NOTIFICATION']['TABOOT_URL'] % (
+
                         self.state_id)))
+
+        self.initialized = True
