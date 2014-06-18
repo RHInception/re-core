@@ -45,7 +45,7 @@ unittests:
 clean:
 	@find . -type f -regex ".*\.py[co]$$" -delete
 	@find . -type f \( -name "*~" -or -name "#*" \) -delete
-	@rm -fR build dist rpm-build MANIFEST htmlcov .coverage $(SHORTNAME).egg-info
+	@rm -fR build dist rpm-build MANIFEST htmlcov .coverage re_core.egg-info
 	@rm -fR $(NAME)env
 
 pep8:
