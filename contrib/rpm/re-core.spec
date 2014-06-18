@@ -8,8 +8,8 @@
 
 Name: re-core
 Summary: FSM of the Inception Release Engine
-Version: 0.0.2
-Release: 4%{?dist}
+Version: 0.0.3
+Release: 1%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -51,6 +51,9 @@ release step. Execution is delegated to the worker component.
 %doc README.md LICENSE AUTHORS
 
 %changelog
+* Wed Jun 18 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.3-1
+- Loop over hosts by expanding the execution sequences
+
 * Tue Jun 17 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.2-4
 - Add missing Requires
 
