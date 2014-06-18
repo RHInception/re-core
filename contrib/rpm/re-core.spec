@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.3
-Release: 1%{?dist}
+Release: 2%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -43,14 +43,19 @@ release step. Execution is delegated to the worker component.
 %{__python2} setup.py build
 
 %install
+rm -rf $RPM_BUILD_ROOT
 %{__python2} setup.py install -O1 --root=$RPM_BUILD_ROOT --record=re-core-files.txt
 
 %files -f re-core-files.txt
+%defattr(-, root, root)
 %dir %{python2_sitelib}/%{_pkg_name}
 %{_bindir}/re-core
 %doc README.md LICENSE AUTHORS
 
 %changelog
+* Wed Jun 18 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.3-2
+- Fix up RPM lint in packaging
+
 * Wed Jun 18 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.3-1
 - Loop over hosts by expanding the execution sequences
 
