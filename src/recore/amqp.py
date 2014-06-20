@@ -93,7 +93,7 @@ def send_notification(ch, routing_key, state_id, target, phase, message):
     }
     props = pika.spec.BasicProperties()
     props.correlation_id = state_id
-    props.reply_to = 'release.step'
+    props.reply_to = 'log'
 
     ch.basic_publish(
         exchange=MQ_CONF['EXCHANGE'],
