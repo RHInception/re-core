@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.3
-Release: 2%{?dist}
+Release: 3%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -53,6 +53,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS
 
 %changelog
+* Fri Jun 20 2014 Steve Milner <stevem@gnulinux.net> - 0.0.3-3
+- Bug fix in notification messages.
+
 * Wed Jun 18 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.3-2
 - Fix up RPM lint in packaging
 
