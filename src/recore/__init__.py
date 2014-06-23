@@ -15,7 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import recore.utils
+import recore.fsm
 import logging
+import os.path
 import recore.mongo
 import recore.amqp
 import sys
@@ -54,6 +56,17 @@ def parse_config(config_path):
             'LOGFILE', 'recore.log'), config.get('LOGLEVEL', 'INFO'))
         notify = logging.getLogger('recore.stdout')
         notify.debug('Parsed configuration file')
+
+        # Initialize the FSM logger, only if RELEASE_LOG_DIR isn't
+        # 'null' in the settings file.
+        #
+        # TODO: This would be better handled by setting
+        # 'recore.fsm.release' levels and then letting the sub-loggers
+        # propagate the level decision to the recore.fsm.release
+        # level.
+        if config.get('RELEASE_LOG_DIR', None):
+            recore.fsm.RELEASE_LOG_DIR = os.path.realpath(config.get('RELEASE_LOG_DIR'))
+
     except IOError:
         print "ERROR config doesn't exist"
         raise SystemExit(1)

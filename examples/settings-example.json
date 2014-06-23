@@ -1,5 +1,6 @@
 {
     "LOGFILE": "recore.log",
+    "RELEASE_LOG_DIR": null,
     "MQ": {
         "SERVER": "amqp.example.com",
         "NAME": "username",

@@ -20,10 +20,13 @@ from datetime import datetime as dt
 import recore.mongo
 import recore.amqp
 import logging
+import os.path
 import threading
 import pika.spec
 import pika.exceptions
 import pymongo.errors
+
+RELEASE_LOG_DIR = None
 
 
 class FSM(threading.Thread):
@@ -38,15 +41,7 @@ a playbooks's release steps."""
         `state_id` - MongoDB ObjectID of the document holding release steps
         """
         super(FSM, self).__init__(*args, **kwargs)
-        self.app_logger = logging.getLogger('FSM-%s' % state_id)
-        self.app_logger.setLevel(logging.INFO)
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s:%(funcName)s:%(lineno)d - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        handler.setLevel(logging.INFO)
-        self.app_logger.addHandler(handler)
-
+        self.app_logger = fsm_logger(state_id)
         # properties for later when we run() like the wind
         self.ch = None
         self.conn = None
@@ -424,3 +419,58 @@ a playbooks's release steps."""
                         self.state_id)))
 
         self.initialized = True
+
+
+def fsm_logger(state_id):
+        """Initialize the FSM Loggers
+
+By default, the FSM will log to the console and a single
+logfile.
+
+Per-Release logging:
+
+Optionally, one may log the FSM activity for each release to a
+separate file. This is done by configuring the re-core
+'RELEASE_LOG_DIR' setting with the path to the log-holding directory.
+
+If per-release logging is enabled, the log files will be created as:
+RELEASE_LOG_DIR/FSM-STATE_ID.log
+
+.. warning::
+
+   Be sure the FSM has permission to write the specified
+   direcotry. You won't find out it can't until the first release is
+   attempted.
+
+Params:
+- state_id: The ID of the currently active release
+
+
+.. todo:: Configure log levels via settings file
+"""
+        _log_id = 'FSM-%s' % state_id
+        _level = logging.INFO
+
+        app_logger = logging.getLogger(_log_id)
+        app_logger.setLevel(_level)
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s:%(funcName)s:%(lineno)d - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        handler.setLevel(_level)
+        app_logger.addHandler(handler)
+
+        # Initialize the per-release logging directory
+        try:
+            release_log = os.path.join(RELEASE_LOG_DIR, "%s.log" % _log_id)
+            release_handler = logging.FileHandler(os.path.realpath(release_log))
+            release_handler.setFormatter(formatter)
+            release_handler.setLevel(_level)
+            app_logger.addHandler(release_handler)
+        except IOError:
+            raise IOError("FSM could not write to the per-release log directory: %s" % (
+                str(RELEASE_LOG_DIR)))
+        except:
+            pass
+
+        return app_logger

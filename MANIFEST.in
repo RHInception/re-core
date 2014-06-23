@@ -1,2 +1,2 @@
-include requirements.txt setup.py README.md AUTHORS LICENSE
+include requirements.txt setup.py README.md AUTHORS LICENSE examples/settings-example.json
 graft src/recore
