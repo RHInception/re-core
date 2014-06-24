@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.3
-Release: 4%{?dist}
+Release: 5%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -21,6 +21,7 @@ BuildRequires: python2-devel
 BuildRequires: python-setuptools
 Requires: python-pymongo
 Requires: python-pika
+Requires: python-argparse
 # BuildRequires: python-nose
 # %{?el6:BuildRequires: python-unittest2}
 
@@ -53,6 +54,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Mon Jun 24 2014 Ryan Cook <rcook@redhat.com> - 0.0.3-5
+- Requires python-argparse
+
 * Mon Jun 23 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.3-4
 - Per-release logging functionality
 
