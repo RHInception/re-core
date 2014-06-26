@@ -171,6 +171,7 @@ a playbooks's release steps."""
             self._run()
         else:
             self.app_logger.error("State update received: Job finished with error(s)")
+            self.failed = True
             self._run()
 
     def move_active_to_completed(self):
