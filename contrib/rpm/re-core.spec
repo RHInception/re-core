@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.3
-Release: 6%{?dist}
+Release: 7%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -54,6 +54,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Thu Jun 26 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.3-7
+- Actually quit early when a step errors
+
 * Thu Jun 26 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.3-6
 - Properly abort if a worker errors/fails
 

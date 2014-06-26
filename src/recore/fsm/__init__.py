@@ -168,11 +168,11 @@ a playbooks's release steps."""
         if msg['status'] == 'completed':
             self.app_logger.info("State update received: Job finished without error")
             self.move_active_to_completed()
+            self._run()
         else:
             self.app_logger.error("State update received: Job finished with error(s)")
             self.failed = True
             self.move_remaining_to_skipped()
-        self._run()
 
     def move_active_to_completed(self):
         finished_step = self.active_step
@@ -220,6 +220,7 @@ in the DB.
         # this properly in the db)
         self.failed = True
         self.app_logger.debug("Recorded failed state in this FSM instance")
+        self._cleanup()
 
     def dequeue_next_active_step(self, to='active_step'):
         """Take the next remaining step/sequence off the queue and move it

@@ -453,6 +453,6 @@ class TestFsm(TestCase):
 
         result = f.on_ended(f.ch, *consume_errored)
         f.move_remaining_to_skipped.assert_called_once_with()
-        assert f._run.called
+        assert not f._run.called
         self.assertFalse(f.move_active_to_completed.called)
         self.assertFalse(result)
