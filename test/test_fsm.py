@@ -425,7 +425,8 @@ class TestFsm(TestCase):
 
     @mock.patch.object(FSM, '_run')
     @mock.patch.object(FSM, 'move_active_to_completed')
-    def test_on_ended(self, run, move_completed):
+    @mock.patch.object(FSM, 'move_remaining_to_skipped')
+    def test_on_ended(self, run, move_completed, move_to_skipped):
         """Once a step ends the FSM checks if it completed or else"""
         f = FSM(state_id)
 
@@ -449,12 +450,9 @@ class TestFsm(TestCase):
         # Check the case where the job ended not "completed"
         f.move_active_to_completed.reset_mock()
         f._run.reset_mock()
-        result = f.on_ended(f.ch, *consume_errored)
 
-        # TODO: Tim verify. According to the code _run is called
-        #       on failure or success. See line 151 and 154
-        #       of src/fsm/__init__.py
+        result = f.on_ended(f.ch, *consume_errored)
+        f.move_remaining_to_skipped.assert_called_once_with()
         assert f._run.called
-        # ---
         self.assertFalse(f.move_active_to_completed.called)
         self.assertFalse(result)

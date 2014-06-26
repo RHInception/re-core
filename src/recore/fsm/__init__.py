@@ -168,11 +168,11 @@ a playbooks's release steps."""
         if msg['status'] == 'completed':
             self.app_logger.info("State update received: Job finished without error")
             self.move_active_to_completed()
-            self._run()
         else:
             self.app_logger.error("State update received: Job finished with error(s)")
             self.failed = True
-            self._run()
+            self.move_remaining_to_skipped()
+        self._run()
 
     def move_active_to_completed(self):
         finished_step = self.active_step
@@ -186,6 +186,40 @@ a playbooks's release steps."""
             }
         }
         self.update_state(_update_state)
+
+    def move_remaining_to_skipped(self):
+        """Most likely an error message has just arrived from a worker.
+
+Record the failed/skipped items so they can be updated in the db. Then
+update self by emptying out anything active or remaining. Reflect this
+in the DB.
+        """
+        failed_step = self.active_step
+        failed_sequence = self.active_sequence
+        skipped_sequences = self.execution
+
+        self.active_step = None
+        self.active_sequence = {}
+        self.execution = []
+
+        _update_state = {
+            '$set': {
+                'failed_step': failed_step,
+                'failed_sequence': failed_sequence,
+                'skipped_sequences': skipped_sequences,
+                'execution': self.execution
+            }
+        }
+
+        self.update_state(_update_state)
+        # We've moved the remaining steps into the skipped steps
+        # list. The next time the FSM loops it will enter its cleanup
+        # method and then terminate.
+
+        # Accept our fate and admit we are a failure (so we can log
+        # this properly in the db)
+        self.failed = True
+        self.app_logger.debug("Recorded failed state in this FSM instance")
 
     def dequeue_next_active_step(self, to='active_step'):
         """Take the next remaining step/sequence off the queue and move it
@@ -235,7 +269,8 @@ a playbooks's release steps."""
 
         """
         try:
-            self.active_step = self.active_sequence['steps'].pop(0)
+            # Use the .get() so it's easy to continue if a step failed
+            self.active_step = self.active_sequence.get('steps', []).pop(0)
         except IndexError:
             # We have exhaused this execution sequence of all release
             # steps. Time to move on to the next sequence.
@@ -403,9 +438,14 @@ a playbooks's release steps."""
         self.db = recore.mongo.database
         self.state_coll = self.db['state']
 
-        # TODO: Put this some where it will be only called once. This
-        # will get called on every step that starts because _setup()
-        # is called each time the _run() method is ran.
+        if not self.initialized:
+            _update_state = {
+                '$set': {
+                    'reply_to': self.reply_queue
+                }
+            }
+            self.update_state(_update_state)
+
         if recore.amqp.CONF.get('PHASE_NOTIFICATION', None) and not self.initialized:
             recore.amqp.send_notification(
                 self.ch,

@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.3
-Release: 5%{?dist}
+Release: 6%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -54,6 +54,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Thu Jun 26 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.3-6
+- Properly abort if a worker errors/fails
+
 * Mon Jun 24 2014 Ryan Cook <rcook@redhat.com> - 0.0.3-5
 - Requires python-argparse
 
