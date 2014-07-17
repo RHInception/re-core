@@ -22,5 +22,16 @@
         "TABOOT_URL":  "http://example.com/taboot/%s/",
         "TOPIC": "notify.irc" ,
         "TARGET": ["#achannel", "someperson"]
-    }
+    },
+    "PRE_DEPLOY_CHECK": [{
+        "Require Change Record": {
+            "COMMAND": "servicenow",
+            "SUBCOMMAND": "getchangerecord",
+            "PARAMETERS": {
+                "project": "myproject",
+                "some_filter": "to find the record"
+            },
+            "EXPECTATION": "completed"
+        }
+    }]
 }

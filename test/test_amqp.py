@@ -47,9 +47,19 @@ CONF = {
         "TABOOT_URL":  "http://example.com/taboot/%s/",
         "TOPIC": "notify.irc" ,
         "TARGET": ["#achannel", "someperson"]
-
-    }
+    },
+    "PRE_DEPLOY_CHECK": [{
+       "Frob something": {
+           "COMMAND": "frob",
+           "SUBCOMMAND": "thething",
+           "PARAMETERS": {
+               "name": "frobmeister"
+           },
+           "EXPECTATION": "completed"
+       }
+    }],
 }
+
 connection = mock.MagicMock('connection')
 CORR_ID = 12345
 REPLY_TO = 'me'

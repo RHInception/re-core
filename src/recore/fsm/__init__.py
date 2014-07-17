@@ -446,7 +446,35 @@ in the DB.
                 }
             }
             self.update_state(_update_state)
+        """
+        # TODO: Have Tim review this, may be a better place for it
+        for pre_check in recore.amqp.CONF.get('PRE_DEPLOY_CHECK', []):
+            (pre_check_key, pre_check_data) = pre_check.items()[0]
+            self.app_logger.info('Executing pre-deploy-check %s' % (
+                pre_check_key))
 
+            props = pika.spec.BasicProperties()
+            props.correlation_id = self.state_id
+            props.reply_to = self.reply_queue
+
+            parameters = pre_check_data.get('PARAMETERS', {})
+            parameters['command'] = pre_check_data['COMMAND']
+            parameters['subcommand'] = pre_check_data['SUBCOMMAND']
+            msg = {
+                'group': self.group,
+                'parameters': parameters,
+                'dynamic': self.dynamic,
+                'notify': {}
+            }
+            plugin_routing_key = "worker.%s" % pre_check_data['COMMAND']
+
+            self.ch.basic_publish(
+                exchange=recore.amqp.MQ_CONF['EXCHANGE'],
+                routing_key=plugin_routing_key,
+                body=json.dumps(msg),
+                properties=props)
+        # --------------------
+        """
         if recore.amqp.CONF.get('PHASE_NOTIFICATION', None) and not self.initialized:
             recore.amqp.send_notification(
                 self.ch,
