@@ -55,7 +55,7 @@ CONF = {
            "PARAMETERS": {
                "name": "frobmeister"
            },
-           "EXPECTATION": "completed"
+           "EXPECTATION": {"status": "completed", "data": {"exists": True}}
        }
     }],
 }

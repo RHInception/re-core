@@ -31,7 +31,12 @@
                 "project": "myproject",
                 "some_filter": "to find the record"
             },
-            "EXPECTATION": "completed"
+            "EXPECTATION": {
+		"status": "completed",
+		"data": {
+		    "exists": true
+		}
+	    }
         }
     }]
 }

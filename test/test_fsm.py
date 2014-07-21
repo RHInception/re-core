@@ -130,10 +130,21 @@ class TestFsm(TestCase):
         """Setup works with an existing state document"""
         f = FSM(state_id)
         # An AMQP connection hasn't been made yet
-        f._connect_mq = mock.MagicMock(
-            return_value=(
-                mock.Mock(pika.channel.Channel),
-                mock.Mock(pika.connection.Connection)))
+
+        msg_started = {'status': 'completed', 'data': {'exists': True}}
+
+        consume_iter = [
+            (mock.Mock(name="method_mocked"),
+             mock.Mock(name="properties_mocked"),
+             json.dumps(msg_started))
+        ]
+
+        f.conn = mock.Mock(pika.connection.Connection)
+        publish = mock.Mock()
+        channel = mock.Mock()
+        channel.consume.return_value = iter(consume_iter)
+        channel.basic_publish = publish
+        f.ch = channel
 
         with mock.patch('recore.mongo.database') as (
                 mongo.database):
@@ -384,9 +395,11 @@ class TestFsm(TestCase):
         cleanup.assert_called_once_with()
         self.assertTrue(result)
 
+    @mock.patch.object(FSM, '_pre_deploy_check')
     @mock.patch.object(FSM, 'on_ended')
-    def test_on_started(self, ended):
+    def test_on_started(self, ended, pdc):
         """Once started, the FSM waits for a response, and then calls on_ended"""
+        pdc.return_value = True
         with nested(
                 mock.patch('recore.mongo.lookup_state'),
                 mock.patch('recore.mongo.database')
@@ -415,6 +428,7 @@ class TestFsm(TestCase):
             channel.consume.return_value = iter(consume_iter)
             channel.basic_publish = publish
             f.ch = channel
+            f.conn = mock.Mock(pika.connection.Connection)
 
             f._setup()
             f.on_started(f.ch, *consume_iter[0])
