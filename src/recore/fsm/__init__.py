@@ -440,14 +440,18 @@ in the DB.
         self.state_coll = self.db['state']
 
         if not self.initialized:
-            _update_state = {
-                '$set': {
-                    'reply_to': self.reply_queue
-                }
+            self.initializeid = self._first_run()
+
+    def _first_run(self):
+        """Things to do only on initialization"""
+        _update_state = {
+            '$set': {
+                'reply_to': self.reply_queue
             }
-            self.update_state(_update_state)
+        }
+        self.update_state(_update_state)
+
         """
-        # TODO: Have Tim review this, may be a better place for it
         for pre_check in recore.amqp.CONF.get('PRE_DEPLOY_CHECK', []):
             (pre_check_key, pre_check_data) = pre_check.items()[0]
             self.app_logger.info('Executing pre-deploy-check %s' % (
@@ -473,9 +477,20 @@ in the DB.
                 routing_key=plugin_routing_key,
                 body=json.dumps(msg),
                 properties=props)
+
         # --------------------
+
+
+        Around here you're going to want to check the result and if it
+        doesn't match our 'OK' condition from the config file then you will:
+
+        set self.failed = True
+
+        then call self.move_remaining_to_skipped()
+
         """
-        if recore.amqp.CONF.get('PHASE_NOTIFICATION', None) and not self.initialized:
+
+        if recore.amqp.CONF.get('PHASE_NOTIFICATION', None):
             recore.amqp.send_notification(
                 self.ch,
                 recore.amqp.CONF['PHASE_NOTIFICATION']['TOPIC'],
@@ -485,13 +500,12 @@ in the DB.
                 'Release %s started. See %s.' % (
                     self.state_id,
                     recore.amqp.CONF['PHASE_NOTIFICATION']['TABOOT_URL'] % (
-
                         self.state_id)))
-
-        self.initialized = True
+        return True
 
 
 def fsm_logger(state_id):
+
         """Initialize the FSM Loggers
 
 By default, the FSM will log to the console and a single
