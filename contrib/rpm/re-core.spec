@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.3
-Release: 7%{?dist}
+Release: 8%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -54,6 +54,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Mon Jul 21 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.3-8
+- Now with pre-deployment checks
+
 * Thu Jun 26 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.3-7
 - Actually quit early when a step errors
 

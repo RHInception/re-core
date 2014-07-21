@@ -336,6 +336,35 @@ in the DB.
         }
         self.update_state(_update_state)
 
+    def notify(self, phase, msg=None):
+        """Send some notifications. Allowed values for `phase` include:
+'started', 'completed', and 'failed'.
+
+The optional `msg` parameter allows you to provide a custom message.
+        """
+        if recore.amqp.CONF.get('PHASE_NOTIFICATION', None):
+            taboot_url = recore.amqp.CONF['PHASE_NOTIFICATION']['TABOOT_URL'] % (
+                self.state_id)
+
+            if msg is not None:
+                _msg = msg
+            else:
+                _msg = "Release %s %s. See %s." % (
+                    self.state_id,
+                    str(phase),
+                    taboot_url)
+
+            recore.amqp.send_notification(
+                self.ch,
+                recore.amqp.CONF['PHASE_NOTIFICATION']['TOPIC'],
+                self.state_id,
+                recore.amqp.CONF['PHASE_NOTIFICATION']['TARGET'],
+                phase,
+                _msg)
+            return True
+        else:
+            return False
+
     def update_state(self, new_state):
         """
         Update the state document in Mongo for this release
@@ -361,18 +390,7 @@ in the DB.
         if not self.failed:
             status = 'completed'
 
-        if recore.amqp.CONF.get('PHASE_NOTIFICATION', None):
-            recore.amqp.send_notification(
-                self.ch,
-                recore.amqp.CONF['PHASE_NOTIFICATION']['TOPIC'],
-                self.state_id,
-                recore.amqp.CONF['PHASE_NOTIFICATION']['TARGET'],
-                status,
-                'Release %s %s. See %s.' % (
-                    self.state_id,
-                    status,
-                    recore.amqp.CONF['PHASE_NOTIFICATION']['TABOOT_URL'] % (
-                        self.state_id)))
+        self.notify(status)
 
         self.ch.queue_delete(queue=self.reply_queue)
         self.app_logger.debug("Deleted AMQP queue: %s" % self.reply_queue)
@@ -450,17 +468,22 @@ in the DB.
     def _first_run(self):
         """Things to do only on initialization.
 
-Developer notes: Don't take any post-failure actions here (if any
-happen). Rather, if there is an issue (like a pre-deploy check
-failing): log the error, set self.failed = True, and return False.
+Developer notes: Don't take any corrective post-failure actions here
+(if any happen). Rather, if there is an issue (like a pre-deploy check
+failing): log the error, set self.failed = True, send a notify() with
+`phase` = 'failed' and `msg` as a descriptive string (hopefully
+pre-checks will always return a 'msg' field you can just use here, and
+then finally return False.
 
 Once control returns to _setup() the False return code will trigger
 moving all remaining steps into skipped and then end the release.
-_cleanup() will take care of sending the updated 'failed' phase
+_cleanup() will take care of sending the final 'failed' phase
 notification.
 
 TODO: Get FSM to send notifications to the general purpose output
-worker."""
+worker.
+
+        """
         _update_state = {
             '$set': {
                 'reply_to': self.reply_queue
@@ -468,28 +491,25 @@ worker."""
         }
         self.update_state(_update_state)
 
+        self.pre_deploy_check = recore.amqp.CONF.get('PRE_DEPLOY_CHECK', [])
+
+        ##############################################################
+        # 'Starting up' phase notification
+        self.notify('started')
+
+        # Run the pre-deploy check. It will give us back False as soon
+        # as the first failure is detected.
         if not self._pre_deploy_check():
             return False
 
         ##############################################################
-        # 'Starting up' phase notification
-        if recore.amqp.CONF.get('PHASE_NOTIFICATION', None):
-            recore.amqp.send_notification(
-                self.ch,
-                recore.amqp.CONF['PHASE_NOTIFICATION']['TOPIC'],
-                self.state_id,
-                recore.amqp.CONF['PHASE_NOTIFICATION']['TARGET'],
-                'started',
-                'Release %s started. See %s.' % (
-                    self.state_id,
-                    recore.amqp.CONF['PHASE_NOTIFICATION']['TABOOT_URL'] % (
-                        self.state_id)))
+        # We made it through the first-run steps without a problem
         return True
 
     def _pre_deploy_check(self):
         """This is the pre-deployment check that runs when the FSM first spins
 up."""
-        for pre_check in recore.amqp.CONF.get('PRE_DEPLOY_CHECK', []):
+        for pre_check in self.pre_deploy_check:
             (pre_check_key, pre_check_data) = pre_check.items()[0]
             self.app_logger.info('Executing pre-deploy-check %s' % (
                 pre_check_key))
@@ -526,9 +546,8 @@ up."""
                 # Stop consuming
                 self.ch.cancel()
 
-                _body = json.loads(body)
                 # Verify results
-
+                _body = json.loads(body)
                 if not _body == pre_check_data['EXPECTATION']:
                     self.failed = True
                     self.app_logger.error("Pre-deploy check failed. Received response '%s'."
@@ -545,8 +564,12 @@ up."""
             if self.failed:
                 # get outta-here if something blew up
                 return False
-            else:
-                return True
+
+        ##############################################################
+        # End the for loop over each check
+        #
+        # If we got this far then nothing failed. So let's return True
+        return True
 
 
 def fsm_logger(state_id):
@@ -568,7 +591,7 @@ RELEASE_LOG_DIR/FSM-STATE_ID.log
 .. warning::
 
    Be sure the FSM has permission to write the specified
-   direcotry. You won't find out it can't until the first release is
+   directory. You won't find out it can't until the first release is
    attempted.
 
 Params:

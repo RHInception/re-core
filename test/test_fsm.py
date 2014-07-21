@@ -162,6 +162,55 @@ class TestFsm(TestCase):
         assert send_notification.call_count == 1
         assert send_notification.call_args[0][4] == 'started'
 
+    @mock.patch.object(FSM, 'move_remaining_to_skipped')
+    @mock.patch('recore.fsm.recore.amqp.send_notification')
+    def test__setup_failed_pre_deploy_check(self, send_notification, move_remaining):
+        """Setup fails with an existing state document and a failed pre-deploy check"""
+        f = FSM(state_id)
+        # An AMQP connection hasn't been made yet
+
+        msg_started = {'status': 'completed', 'data': {'exists': False}}
+
+        consume_iter = [
+            (mock.Mock(name="method_mocked"),
+             mock.Mock(name="properties_mocked"),
+             json.dumps(msg_started))
+        ]
+
+        f.conn = mock.Mock(pika.connection.Connection)
+        publish = mock.Mock()
+        channel = mock.Mock()
+        channel.consume.return_value = iter(consume_iter)
+        channel.basic_publish = publish
+        f.ch = channel
+
+        with mock.patch('recore.mongo.database') as (
+                mongo.database):
+            mongo.database = mock.MagicMock(pymongo.database.Database)
+            mongo.database.__getitem__.return_value = mock.MagicMock(pymongo.collection.Collection)
+
+            with mock.patch('recore.mongo.lookup_state') as (
+                    mongo.lookup_state):
+                mongo.lookup_state.return_value = _state
+
+                f._setup()
+                assert f.group == _state['group']
+
+        # No matter where a release fails, 'move_remaining_to_skipped' will be called
+        move_remaining.assert_called_once_with()
+        # the first run/pre-deploy steps will record the failed state
+        assert f.initialized == False
+
+        # The starting phase notification will be sent
+        assert send_notification.call_count == 1
+        assert send_notification.call_args[0][4] == 'started'
+
+        # After first_run finishes self.failed should be True
+        f._cleanup()
+        assert send_notification.call_count == 2
+        assert send_notification.call_args[0][4] == 'failed'
+        assert f.failed == True
+
     def test__setup_lookup_state_none(self):
         """if lookup_state returns None then a LookupError is raised"""
         f = FSM(state_id)
