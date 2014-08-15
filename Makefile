@@ -123,3 +123,39 @@ ci-pep8:
 
 ci: clean virtualenv ci-list-deps ci-pep8 ci-unittests
 	:
+
+################################################################################
+
+
+scl-virtualenv:
+	@echo "#############################################"
+	@echo "# Creating a virtualenv"
+	@echo "#############################################"
+	scl enable python27 'virtualenv $(NAME)env'
+	scl enable python27 '. $(NAME)env/bin/activate && pip install -r requirements.txt'
+	scl enable python27 '. $(NAME)env/bin/activate && pip install pep8 nose coverage mock'
+
+#       If there are any special things to install do it here
+#       . $(NAME)env/bin/activate && INSTALL STUFF
+
+scl-ci-unittests:
+	@echo "#############################################"
+	@echo "# Running Unit Tests in virtualenv"
+	@echo "#############################################"
+	scl enable python27 '. $(NAME)env/bin/activate && nosetests -v --with-cover --cover-min-percentage=80 --cover-package=$(TESTPACKAGE) test/'
+
+scl-ci-list-deps:
+	@echo "#############################################"
+	@echo "# Listing all pip deps"
+	@echo "#############################################"
+	scl enable python27 '. $(NAME)env/bin/activate && pip freeze'
+
+scl-ci-pep8:
+	@echo "#############################################"
+	@echo "# Running PEP8 Compliance Tests in virtualenv"
+	@echo "#############################################"
+	scl enable python27 '. $(NAME)env/bin/activate && pep8 --ignore=E501,E121,E124 src/$(SHORTNAME)/'
+
+
+scl-ci: clean scl-virtualenv scl-ci-list-deps scl-ci-pep8 scl-ci-unittests
+	:
