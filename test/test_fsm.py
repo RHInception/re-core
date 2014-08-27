@@ -568,8 +568,7 @@ Tests for the case where only one notification transport (irc, email) is defined
         channel.consume.return_value = iter(consume_iter)
         channel.basic_publish = publish
         f.ch = channel
-        f.active_sequence = {}
-        f.active_sequence['hosts'] = ['localhost']
+        f.active_sequence = {'hosts': ['localhost']}
         f.group = 'testgroup'
         f.dynamic = {}
         f.active_step = _active_step_notify.copy()
