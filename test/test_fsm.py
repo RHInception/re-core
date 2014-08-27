@@ -37,22 +37,21 @@ _active_step_dict = {
         "service": "megafrobber",
     }
 }
-_active_step_notify = {
-    "service:Restart": {
-        "service": "megafrobber",
-        "notify": {
-            "started": {
-                "irc": ['#achannel'],
-            },
-            "completed": {
-                "irc": ['#achannel'],
-            },
-            "failed": {
-                "irc": ['#achannel'],
+
+def new_notify_step(*phases):
+    _step = {
+        "service:Restart": {
+            "service": "megafrobber",
+            "notify": {
             }
         }
     }
-}
+    for phase in phases:
+        _step['service:Restart']['notify'][phase] = {
+            "irc": ['#achannel'],
+        }
+    return _step
+
 _state = {
     # Meta
     'reply_to': None,
@@ -502,10 +501,11 @@ class TestFsm(TestCase):
             f.ch.cancel.assert_called_once_with()
             f.on_ended.assert_called_once_with(f.ch, *consume_iter[0])
 
+    @mock.patch.object(FSM, 'notify_step')
     @mock.patch.object(FSM, '_run')
     @mock.patch.object(FSM, 'move_active_to_completed')
     @mock.patch.object(FSM, 'move_remaining_to_skipped')
-    def test_on_ended(self, run, move_completed, move_to_skipped):
+    def test_on_ended(self, run, move_completed, move_to_skipped, notify):
         """Once a step ends the FSM checks if it completed or else"""
         f = FSM(state_id)
 
@@ -548,7 +548,7 @@ class TestFsm(TestCase):
     def test_step_notification_started(self, send_notification, on_started, dequeue_step, setup):
         """Per-step notifications work when starting a step
 
-Tests for the case where only one notification transport (irc, email) is defined"""
+Tests for the case where only one notification transport (irc, email, etc) is defined"""
         f = FSM(state_id)
 
         msg_started = {'status': 'started'}
@@ -571,15 +571,10 @@ Tests for the case where only one notification transport (irc, email) is defined
         f.active_sequence = {'hosts': ['localhost']}
         f.group = 'testgroup'
         f.dynamic = {}
-        f.active_step = _active_step_notify.copy()
-
-        # We're testing the 'started' behavior, remove the unnecessary test values
-        del f.active_step['service:Restart']['notify']['failed']
-        del f.active_step['service:Restart']['notify']['completed']
+        f.active_step = new_notify_step('started')
 
         # Run the method now. It should terminate when it reaches the
         # end of _run() with a call to a mocked out on_started()
-        print f.active_step
         f._run()
 
         self.assertEqual(send_notification.call_count, 1)
@@ -587,3 +582,218 @@ Tests for the case where only one notification transport (irc, email) is defined
         self.assertEqual(send_notification.call_args[0][2], state_id)
         self.assertEqual(send_notification.call_args[0][3], ['#achannel'])
         self.assertEqual(send_notification.call_args[0][4], 'started')
+
+    @mock.patch.object(FSM, '_run')
+    @mock.patch.object(FSM, 'move_active_to_completed')
+    @mock.patch('recore.fsm.recore.amqp.send_notification')
+    def test_step_notification_completed(self, send_notification, move_active, run):
+        """Per-step notifications work when a step is completed
+
+Tests for the case where only one notification transport (irc, email, etc) is defined"""
+        f = FSM(state_id)
+
+        msg_completed = {'status': 'completed'}
+
+        consume_iter = [
+            (mock.Mock(name="method_mocked"),
+             mock.Mock(name="properties_mocked"),
+             json.dumps(msg_completed))
+        ]
+
+        # Pre-test scaffolding. Hard-code some mocked out
+        # attributes/variables because we're skipping the usual
+        # initialization steps.
+        f.conn = mock.Mock(pika.connection.Connection)
+        publish = mock.Mock()
+        channel = mock.Mock()
+        channel.consume.return_value = iter(consume_iter)
+        channel.basic_publish = publish
+        f.ch = channel
+        f.active_sequence = {'hosts': ['localhost']}
+        f.group = 'testgroup'
+        f.dynamic = {}
+        f.active_step = new_notify_step('completed')
+
+        # Run the ended method with a body having 'status' as completed
+        f.on_ended(channel,
+                   mock.Mock(name="method_mocked"),
+                   mock.Mock(name="header_mocked"),
+                   json.dumps(msg_completed))
+
+        self.assertEqual(send_notification.call_count, 1)
+        self.assertEqual(send_notification.call_args[0][1], 'worker.irc')
+        self.assertEqual(send_notification.call_args[0][2], state_id)
+        self.assertEqual(send_notification.call_args[0][3], ['#achannel'])
+        self.assertEqual(send_notification.call_args[0][4], 'completed')
+
+    @mock.patch.object(FSM, 'move_remaining_to_skipped')
+    @mock.patch('recore.fsm.recore.amqp.send_notification')
+    def test_step_notification_failed(self, send_notification, move_remaining):
+        """Per-step notifications work when a step fails
+
+Tests for the case where only one notification transport (irc, email, etc) is defined"""
+        f = FSM(state_id)
+
+        msg_failed = {'status': 'failed'}
+
+        consume_iter = [
+            (mock.Mock(name="method_mocked"),
+             mock.Mock(name="properties_mocked"),
+             json.dumps(msg_failed))
+        ]
+
+        # Pre-test scaffolding. Hard-code some mocked out
+        # attributes/variables because we're skipping the usual
+        # initialization steps.
+        f.conn = mock.Mock(pika.connection.Connection)
+        publish = mock.Mock()
+        channel = mock.Mock()
+        channel.consume.return_value = iter(consume_iter)
+        channel.basic_publish = publish
+        f.ch = channel
+        f.active_sequence = {'hosts': ['localhost']}
+        f.group = 'testgroup'
+        f.dynamic = {}
+        f.active_step = new_notify_step('failed')
+
+        # Run the ended method with a body having 'status' as failed
+        f.on_ended(channel,
+                   mock.Mock(name="method_mocked"),
+                   mock.Mock(name="header_mocked"),
+                   json.dumps(msg_failed))
+
+        self.assertEqual(send_notification.call_count, 1)
+        self.assertEqual(send_notification.call_args[0][1], 'worker.irc')
+        self.assertEqual(send_notification.call_args[0][2], state_id)
+        self.assertEqual(send_notification.call_args[0][3], ['#achannel'])
+        self.assertEqual(send_notification.call_args[0][4], 'failed')
+
+    @mock.patch.object(FSM, '_setup')
+    @mock.patch.object(FSM, 'dequeue_next_active_step')
+    @mock.patch.object(FSM, 'on_started')
+    @mock.patch('recore.fsm.recore.amqp.send_notification')
+    def test_step_notification_started_no_notifications(self, send_notification, on_started, dequeue_step, setup):
+        """Per-step notifications don't happen if no notifications are defined"""
+        f = FSM(state_id)
+
+        msg_started = {'status': 'started'}
+
+        consume_iter = [
+            (mock.Mock(name="method_mocked"),
+             mock.Mock(name="properties_mocked"),
+             json.dumps(msg_started))
+        ]
+
+        # Pre-test scaffolding. Hard-code some mocked out
+        # attributes/variables because we're skipping the usual
+        # initialization steps.
+        f.conn = mock.Mock(pika.connection.Connection)
+        publish = mock.Mock()
+        channel = mock.Mock()
+        channel.consume.return_value = iter(consume_iter)
+        channel.basic_publish = publish
+        f.ch = channel
+        f.active_sequence = {'hosts': ['localhost']}
+        f.group = 'testgroup'
+        f.dynamic = {}
+        f.active_step = new_notify_step()
+
+        # Run the method now. It should terminate when it reaches the
+        # end of _run() with a call to a mocked out on_started()
+        f._run()
+
+        self.assertEqual(send_notification.call_count, 0)
+
+    @mock.patch.object(FSM, '_setup')
+    @mock.patch.object(FSM, 'dequeue_next_active_step')
+    @mock.patch.object(FSM, 'on_started')
+    @mock.patch('recore.fsm.recore.amqp.send_notification')
+    def test_step_notification_started_two_transports(self, send_notification, on_started, dequeue_step, setup):
+        """Per-step notifications happen for all defined transports
+
+Tests for the case where multiple notification transports (irc, email, etc) are defined"""
+
+        f = FSM(state_id)
+
+        msg_started = {'status': 'started'}
+
+        consume_iter = [
+            (mock.Mock(name="method_mocked"),
+             mock.Mock(name="properties_mocked"),
+             json.dumps(msg_started))
+        ]
+
+        # Pre-test scaffolding. Hard-code some mocked out
+        # attributes/variables because we're skipping the usual
+        # initialization steps.
+        f.conn = mock.Mock(pika.connection.Connection)
+        publish = mock.Mock()
+        channel = mock.Mock()
+        channel.consume.return_value = iter(consume_iter)
+        channel.basic_publish = publish
+        f.ch = channel
+        f.active_sequence = {'hosts': ['localhost']}
+        f.group = 'testgroup'
+        f.dynamic = {}
+
+        _step = {
+            "service:Restart": {
+                "service": "megafrobber",
+                "notify": {
+                    "started": {
+                        "irc": ['#achannel'],
+                        "email": ['notify@example.com']
+                    }
+                }
+            }
+        }
+
+        f.active_step = _step
+
+        # Run the method now. It should terminate when it reaches the
+        # end of _run() with a call to a mocked out on_started()
+        f._run()
+
+        self.assertEqual(send_notification.call_count, 2)
+
+    @mock.patch.object(FSM, 'move_remaining_to_skipped')
+    @mock.patch.object(FSM, '_run')
+    @mock.patch.object(FSM, 'move_active_to_completed')
+    @mock.patch('recore.fsm.recore.amqp.send_notification')
+    def test_step_notification_failed_before_started_received(self, send_notification, move_active, run, skipped):
+        """Per-step notifications happen if a step fails when the worker attempts to start it"""
+        f = FSM(state_id)
+
+        msg_failed = {'status': 'failed'}
+
+        consume_iter = [
+            (mock.Mock(name="method_mocked"),
+             mock.Mock(name="properties_mocked"),
+             json.dumps(msg_failed))
+        ]
+
+        # Pre-test scaffolding. Hard-code some mocked out
+        # attributes/variables because we're skipping the usual
+        # initialization steps.
+        f.conn = mock.Mock(pika.connection.Connection)
+        publish = mock.Mock()
+        channel = mock.Mock()
+        channel.consume.return_value = iter(consume_iter)
+        channel.basic_publish = publish
+        f.ch = channel
+        f.active_sequence = {'hosts': ['localhost']}
+        f.group = 'testgroup'
+        f.dynamic = {}
+        f.active_step = new_notify_step('failed')
+
+        # Run the ended method with a body having 'status' as completed
+        f.on_started(channel,
+                   mock.Mock(name="method_mocked"),
+                   mock.Mock(name="header_mocked"),
+                   json.dumps(msg_failed))
+
+        self.assertEqual(send_notification.call_count, 1)
+        self.assertEqual(send_notification.call_args[0][1], 'worker.irc')
+        self.assertEqual(send_notification.call_args[0][2], state_id)
+        self.assertEqual(send_notification.call_args[0][3], ['#achannel'])
+        self.assertEqual(send_notification.call_args[0][4], 'failed')

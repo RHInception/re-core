@@ -164,6 +164,7 @@ a playbooks's release steps."""
 
         msg = json.loads(body)
         self.app_logger.debug(json.dumps(msg))
+        self.notify_step(msg)
 
         # Remove from active step, push onto completed steps
         # - Reflect in MongoDB
@@ -384,7 +385,6 @@ Returns `None` if no action was required. Else, returns `True`
         _step_key = self.active_step.keys()[0]
         # Is there a notification defined?
         if 'notify' not in self.active_step[_step_key]:
-            print "No 'notify' set in active step"
             return None
 
         # What phase are we in? What will we tell the world about that?
@@ -410,7 +410,6 @@ Returns `None` if no action was required. Else, returns `True`
         _notif = self.active_step[_step_key]['notify'].get(_phase, None)
         if (_notif is None) or (_notif == {}):
             # No notification set for this phase, get out
-            print "No 'notify' set for this phase in active step"
             return None
 
         # One or more notifications ARE set for this phase
@@ -427,7 +426,6 @@ Returns `None` if no action was required. Else, returns `True`
         return True
 
     def update_state(self, new_state):
-
         """
         Update the state document in Mongo for this release
         """
@@ -635,7 +633,6 @@ up."""
 
 
 def fsm_logger(state_id):
-
         """Initialize the FSM Loggers
 
 By default, the FSM will log to the console and a single
