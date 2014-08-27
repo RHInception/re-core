@@ -550,7 +550,6 @@ class TestFsm(TestCase):
 
 Tests for the case where only one notification transport (irc, email) is defined"""
         f = FSM(state_id)
-        # An AMQP connection hasn't been made yet
 
         msg_started = {'status': 'started'}
 
@@ -560,6 +559,9 @@ Tests for the case where only one notification transport (irc, email) is defined
              json.dumps(msg_started))
         ]
 
+        # Pre-test scaffolding. Hard-code some mocked out
+        # attributes/variables because we're skipping the usual
+        # initialization steps.
         f.conn = mock.Mock(pika.connection.Connection)
         publish = mock.Mock()
         channel = mock.Mock()
@@ -570,26 +572,16 @@ Tests for the case where only one notification transport (irc, email) is defined
         f.active_sequence['hosts'] = ['localhost']
         f.group = 'testgroup'
         f.dynamic = {}
+        f.active_step = _active_step_notify.copy()
 
-        with mock.patch('recore.mongo.database') as (
-                mongo.database):
-            mongo.database = mock.MagicMock(pymongo.database.Database)
-            mongo.database.__getitem__.return_value = mock.MagicMock(pymongo.collection.Collection)
+        # We're testing the 'started' behavior, remove the unnecessary test values
+        del f.active_step['service:Restart']['notify']['failed']
+        del f.active_step['service:Restart']['notify']['completed']
 
-            with mock.patch('recore.mongo.lookup_state') as (
-                    mongo.lookup_state):
-                mongo.lookup_state.return_value = _state
-                f._setup()
-
-                f.active_step = _active_step_notify.copy()
-                # We're testing the 'started' behavior, remove the unnecessary test values
-                del f.active_step['service:Restart']['notify']['failed']
-                del f.active_step['service:Restart']['notify']['completed']
-
-                # Run the method now. It should terminate when it reaches the
-                # end of _run() with a call to a mocked out on_started()
-                print f.active_step
-                f._run()
+        # Run the method now. It should terminate when it reaches the
+        # end of _run() with a call to a mocked out on_started()
+        print f.active_step
+        f._run()
 
         self.assertEqual(send_notification.call_count, 1)
         self.assertEqual(send_notification.call_args[0][1], 'worker.irc')
