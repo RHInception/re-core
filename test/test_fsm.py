@@ -37,6 +37,22 @@ _active_step_dict = {
         "service": "megafrobber",
     }
 }
+_active_step_notify = {
+    "service:Restart": {
+        "service": "megafrobber",
+        "notify": {
+            "started": {
+                "irc": ['#achannel'],
+            },
+            "completed": {
+                "irc": ['#achannel'],
+            },
+            "failed": {
+                "irc": ['#achannel'],
+            }
+        }
+    }
+}
 _state = {
     # Meta
     'reply_to': None,
@@ -519,3 +535,60 @@ class TestFsm(TestCase):
         assert not f._run.called
         self.assertFalse(f.move_active_to_completed.called)
         self.assertFalse(result)
+
+    ##################################################################
+    # Tests for user-defined per-step notifications
+    ##################################################################
+    # Most out most of the basic setup methods so we can focus the
+    # tests on just the targeted area
+    @mock.patch.object(FSM, '_setup')
+    @mock.patch.object(FSM, 'dequeue_next_active_step')
+    @mock.patch.object(FSM, 'on_started')
+    @mock.patch('recore.fsm.recore.amqp.send_notification')
+    def test_step_notification_started(self, send_notification, on_started, dequeue_step, setup):
+        """Per-step notifications work when starting a step"""
+        f = FSM(state_id)
+        # An AMQP connection hasn't been made yet
+
+        msg_started = {'status': 'started'}
+
+        consume_iter = [
+            (mock.Mock(name="method_mocked"),
+             mock.Mock(name="properties_mocked"),
+             json.dumps(msg_started))
+        ]
+
+        f.conn = mock.Mock(pika.connection.Connection)
+        publish = mock.Mock()
+        channel = mock.Mock()
+        channel.consume.return_value = iter(consume_iter)
+        channel.basic_publish = publish
+        f.ch = channel
+        f.active_sequence = {}
+        f.active_sequence['hosts'] = ['localhost']
+        f.group = 'testgroup'
+        f.dynamic = {}
+
+        with mock.patch('recore.mongo.database') as (
+                mongo.database):
+            mongo.database = mock.MagicMock(pymongo.database.Database)
+            mongo.database.__getitem__.return_value = mock.MagicMock(pymongo.collection.Collection)
+
+            with mock.patch('recore.mongo.lookup_state') as (
+                    mongo.lookup_state):
+                mongo.lookup_state.return_value = _state
+                f._setup()
+
+                f.active_step = _active_step_notify.copy()
+                # We're testing the 'started' behavior, remove the unnecessary test values
+                del f.active_step['service:Restart']['notify']['failed']
+                del f.active_step['service:Restart']['notify']['completed']
+
+                # Run the method now. It should terminate when it reaches the
+                # end of _run() with a call to a mocked out on_started()
+                print f.active_step
+                f._run()
+
+        assert send_notification.call_count == 1
+        assert send_notification.call_args[0][4] == 'started'
+        assert send_notification.call_args[0][3] == ['#achannel']
