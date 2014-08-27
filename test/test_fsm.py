@@ -546,7 +546,9 @@ class TestFsm(TestCase):
     @mock.patch.object(FSM, 'on_started')
     @mock.patch('recore.fsm.recore.amqp.send_notification')
     def test_step_notification_started(self, send_notification, on_started, dequeue_step, setup):
-        """Per-step notifications work when starting a step"""
+        """Per-step notifications work when starting a step
+
+Tests for the case where only one notification transport (irc, email) is defined"""
         f = FSM(state_id)
         # An AMQP connection hasn't been made yet
 
@@ -589,6 +591,8 @@ class TestFsm(TestCase):
                 print f.active_step
                 f._run()
 
-        assert send_notification.call_count == 1
-        assert send_notification.call_args[0][4] == 'started'
-        assert send_notification.call_args[0][3] == ['#achannel']
+        self.assertEqual(send_notification.call_count, 1)
+        self.assertEqual(send_notification.call_args[0][1], 'worker.irc')
+        self.assertEqual(send_notification.call_args[0][2], state_id)
+        self.assertEqual(send_notification.call_args[0][3], ['#achannel'])
+        self.assertEqual(send_notification.call_args[0][4], 'started')

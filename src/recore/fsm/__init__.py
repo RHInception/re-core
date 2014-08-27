@@ -96,7 +96,7 @@ a playbooks's release steps."""
             _step_key = self.active_step.keys()[0]
             (worker_queue, sep, subcommand) = _step_key.partition(':')
             params = self.active_step[_step_key]
-            notify.update(self.active_step.get('notify', {}))
+            notify.update(self.active_step[_step_key].get('notify', {}))
 
         _params = {
             'command': worker_queue,
@@ -119,6 +119,8 @@ a playbooks's release steps."""
                               routing_key=plugin_queue,
                               body=json.dumps(msg),
                               properties=props)
+
+        self.notify_step()
 
         self.app_logger.info("Sent plugin (%s) new job details" % plugin_queue)
         self.app_logger.info("Details: %s" % (
@@ -365,7 +367,67 @@ The optional `msg` parameter allows you to provide a custom message.
         else:
             return False
 
+    def notify_step(self, response=None):
+        """A step may have a user-defined notification. If one is set this
+        method will send the proper notification out for processing.
+
+`response` - Leave as `None` for 'started' statuss. Pass in a dict of
+the workers response for 'completed' and 'failed' notifications.
+
+Returns `None` if no action was required. Else, returns `True`
+        """
+        if type(self.active_step) == str or \
+           type(self.active_step) == unicode:
+            # this is just a string step, no parameters defined at all
+            return None
+
+        _step_key = self.active_step.keys()[0]
+        # Is there a notification defined?
+        if 'notify' not in self.active_step[_step_key]:
+            print "No 'notify' set in active step"
+            return None
+
+        # What phase are we in? What will we tell the world about that?
+        _phase = None
+        _msg = ""
+        if response is None:
+            _phase = 'started'
+            _msg = "Started step: %s" % str(self.active_step)
+        elif response.get('status', None) == 'completed':
+            _phase = 'completed'
+            _msg = "Completed step: %s with status: %s" % (
+                str(self.active_step),
+                str(response))
+        elif response.get('status', None) == 'failed':
+            _phase = 'failed'
+            _msg = "Failed step: %s with status: %s" % (
+                str(self.active_step),
+                str(response))
+        else:
+            raise TypeError("Invalid 'status' parameter for step notification: %s" % str(response['status']))
+
+        # Is there a notification defined for this phase?
+        _notif = self.active_step[_step_key]['notify'].get(_phase, None)
+        if (_notif is None) or (_notif == {}):
+            # No notification set for this phase, get out
+            print "No 'notify' set for this phase in active step"
+            return None
+
+        # One or more notifications ARE set for this phase
+        for routing_key, target in _notif.iteritems():
+            route_to_topic = "worker.%s" % routing_key
+            recore.amqp.send_notification(
+                self.ch,
+                route_to_topic,
+                self.state_id,
+                target,
+                _phase,
+                _msg)
+
+        return True
+
     def update_state(self, new_state):
+
         """
         Update the state document in Mongo for this release
         """
