@@ -578,7 +578,7 @@ Tests for the case where only one notification transport (irc, email, etc) is de
         f._run()
 
         self.assertEqual(send_notification.call_count, 1)
-        self.assertEqual(send_notification.call_args[0][1], 'worker.irc')
+        self.assertEqual(send_notification.call_args[0][1], 'notify.irc')
         self.assertEqual(send_notification.call_args[0][2], state_id)
         self.assertEqual(send_notification.call_args[0][3], ['#achannel'])
         self.assertEqual(send_notification.call_args[0][4], 'started')
@@ -621,7 +621,7 @@ Tests for the case where only one notification transport (irc, email, etc) is de
                    json.dumps(msg_completed))
 
         self.assertEqual(send_notification.call_count, 1)
-        self.assertEqual(send_notification.call_args[0][1], 'worker.irc')
+        self.assertEqual(send_notification.call_args[0][1], 'notify.irc')
         self.assertEqual(send_notification.call_args[0][2], state_id)
         self.assertEqual(send_notification.call_args[0][3], ['#achannel'])
         self.assertEqual(send_notification.call_args[0][4], 'completed')
@@ -663,7 +663,7 @@ Tests for the case where only one notification transport (irc, email, etc) is de
                    json.dumps(msg_failed))
 
         self.assertEqual(send_notification.call_count, 1)
-        self.assertEqual(send_notification.call_args[0][1], 'worker.irc')
+        self.assertEqual(send_notification.call_args[0][1], 'notify.irc')
         self.assertEqual(send_notification.call_args[0][2], state_id)
         self.assertEqual(send_notification.call_args[0][3], ['#achannel'])
         self.assertEqual(send_notification.call_args[0][4], 'failed')
@@ -793,7 +793,7 @@ Tests for the case where multiple notification transports (irc, email, etc) are 
                    json.dumps(msg_failed))
 
         self.assertEqual(send_notification.call_count, 1)
-        self.assertEqual(send_notification.call_args[0][1], 'worker.irc')
+        self.assertEqual(send_notification.call_args[0][1], 'notify.irc')
         self.assertEqual(send_notification.call_args[0][2], state_id)
         self.assertEqual(send_notification.call_args[0][3], ['#achannel'])
         self.assertEqual(send_notification.call_args[0][4], 'failed')

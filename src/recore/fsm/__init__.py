@@ -387,6 +387,7 @@ Returns `None` if no action was required. Else, returns `True`
         if 'notify' not in self.active_step[_step_key]:
             return None
 
+        self.app_logger.info("Identifying current step phase to determine if a notification should be sent")
         # What phase are we in? What will we tell the world about that?
         _phase = None
         _msg = ""
@@ -404,17 +405,24 @@ Returns `None` if no action was required. Else, returns `True`
                 str(self.active_step),
                 str(response))
         else:
+            self.app_logger.error("Invalid phase given: %s" % str(response['status']))
             raise TypeError("Invalid 'status' parameter for step notification: %s" % str(response['status']))
+
+        self.app_logger.info("Identified current phase: %s" % _phase)
 
         # Is there a notification defined for this phase?
         _notif = self.active_step[_step_key]['notify'].get(_phase, None)
         if (_notif is None) or (_notif == {}):
+            self.app_logger.debug("No notification requested for this phase: %s" % _phase)
             # No notification set for this phase, get out
             return None
 
         # One or more notifications ARE set for this phase
+        i = 0
+        transports = []
         for routing_key, target in _notif.iteritems():
-            route_to_topic = "worker.%s" % routing_key
+            transports.append(routing_key)
+            route_to_topic = "notify.%s" % routing_key
             recore.amqp.send_notification(
                 self.ch,
                 route_to_topic,
@@ -422,7 +430,11 @@ Returns `None` if no action was required. Else, returns `True`
                 target,
                 _phase,
                 _msg)
+            i += 1
 
+        self.app_logger.info("Sent %s notifications over transport(s): %s" % (
+            i,
+            ", ".join(transports)))
         return True
 
     def update_state(self, new_state):
