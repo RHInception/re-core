@@ -457,6 +457,9 @@ Returns `None` if no action was required. Else, returns `True`
             raise pmex
 
     def _cleanup(self):
+        if not self._post_deploy_action():
+            self.failed = True
+
         # Send ending notification
         status = 'failed'
         if not self.failed:
@@ -564,6 +567,7 @@ worker.
         self.update_state(_update_state)
 
         self.pre_deploy_check = recore.amqp.CONF.get('PRE_DEPLOY_CHECK', [])
+        self.post_deploy_action = recore.amqp.CONF.get('POST_DEPLOY_ACTION', [])
 
         ##############################################################
         # 'Starting up' phase notification
@@ -629,6 +633,69 @@ up."""
                     self.app_logger.error("Aborting release due to failed pre-deploy check")
                 else:
                     self.app_logger.error("Pre-deploy check passed: %s" % (
+                        str(_body)))
+                # Seriously, stop consuming
+                break
+
+            if self.failed:
+                # get outta-here if something blew up
+                return False
+
+        ##############################################################
+        # End the for loop over each check
+        #
+        # If we got this far then nothing failed. So let's return True
+        return True
+
+    def _post_deploy_action(self):
+        """This is the post-deployment check that runs when the FSM is
+preparing to finish a deployment."""
+        for post_check in self.post_deploy_action:
+            (post_check_key, post_check_data) = post_check.items()[0]
+            self.app_logger.info('Executing post-deploy-action %s' % (
+                post_check_key))
+
+            props = pika.spec.BasicProperties()
+            props.correlation_id = self.state_id
+            props.reply_to = self.reply_queue
+
+            parameters = post_check_data.get('PARAMETERS', {})
+            parameters['command'] = post_check_data['COMMAND']
+            parameters['subcommand'] = post_check_data['SUBCOMMAND']
+            msg = {
+                'group': self.group,
+                'parameters': parameters,
+                'dynamic': self.dynamic,
+                'notify': {}
+            }
+            plugin_routing_key = "worker.%s" % post_check_data['COMMAND']
+
+            self.ch.basic_publish(
+                exchange=recore.amqp.MQ_CONF['EXCHANGE'],
+                routing_key=plugin_routing_key,
+                body=json.dumps(msg),
+                properties=props)
+
+            self.app_logger.info("Sent post-deploy action (%s) new job details" % (
+                plugin_routing_key))
+            self.app_logger.info("Details: %s" % (
+                str(msg)))
+            # Begin consuming from reply_queue
+            self.app_logger.debug("Waiting for post-deploy to update us with pass/fail")
+
+            for method, properties, body in self.ch.consume(self.reply_queue):
+                # Stop consuming
+                self.ch.cancel()
+
+                # Verify results
+                _body = json.loads(body)
+                if not _body['status'] == 'completed':
+                    self.failed = True
+                    self.app_logger.error("Post-deploy failed. Received response '%s'." % (
+                        str(_body)))
+                    self.app_logger.error("Aborting release due to failed post-deploy")
+                else:
+                    self.app_logger.error("Post-deploy passed: %s" % (
                         str(_body)))
                 # Seriously, stop consuming
                 break

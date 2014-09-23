@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.4
-Release: 1%{?dist}
+Release: 2%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -54,6 +54,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Tue Sep 23 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.4-2
+- Now with POST_DEPLOY_ACTIONs
+
 * Wed Aug 27 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.4-1
 - Fix the routing key for notifications. Add logging
 

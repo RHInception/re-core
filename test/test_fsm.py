@@ -261,8 +261,9 @@ class TestFsm(TestCase):
                 with self.assertRaises(pika.exceptions.AMQPError):
                     f._setup()
 
+    @mock.patch.object(FSM, '_post_deploy_action')
     @mock.patch('recore.fsm.recore.amqp.send_notification')
-    def test__cleanup(self, send_notification):
+    def test__cleanup(self, send_notification, post_deploy):
         """Cleanup erases the needful"""
         f = FSM(state_id)
         f.ch = mock.Mock(pika.channel.Channel)
@@ -289,11 +290,47 @@ class TestFsm(TestCase):
             f.ch.queue_delete.assert_called_once_with(queue=temp_queue)
 
         # At the very end a notification should go out no matter what
-        assert send_notification.call_count == 1
+        self.assertEqual(send_notification.call_count, 1)
         assert send_notification.call_args[0][4] == 'completed'
+        post_deploy.assert_called_once()
 
+    @mock.patch.object(FSM, '_post_deploy_action')
     @mock.patch('recore.fsm.recore.amqp.send_notification')
-    def test__cleanup_failed(self, send_notification):
+    def test__cleanup_post_failed(self, send_notification, post_deploy):
+        """Cleanup marks release as failed if post deploy fails"""
+        post_deploy.return_value = False
+        f = FSM(state_id)
+        f.ch = mock.Mock(pika.channel.Channel)
+        f.conn = mock.Mock(pika.connection.Connection)
+        f.reply_queue = temp_queue
+
+        _update_state = {
+            '$set': {
+                'ended': UTCNOW,
+                'failed': True
+            }
+        }
+
+        with mock.patch.object(f, 'update_state', mock.Mock()) as (
+                us):
+            with mock.patch('recore.fsm.dt') as (
+                    dt):
+                dt.now.return_value = UTCNOW
+                f._cleanup()
+
+            # update state set the ended item in the state doc.
+            us.assert_called_with(_update_state)
+            f.conn.close.assert_called_once_with()
+            f.ch.queue_delete.assert_called_once_with(queue=temp_queue)
+
+        # At the very end a notification should go out no matter what
+        self.assertEqual(send_notification.call_count, 1)
+        assert send_notification.call_args[0][4] == 'failed'
+        post_deploy.assert_called_once()
+
+    @mock.patch.object(FSM, '_post_deploy_action')
+    @mock.patch('recore.fsm.recore.amqp.send_notification')
+    def test__cleanup_failed(self, send_notification, post_deploy):
         """Cleanup fails if update_state raises"""
         f = FSM(state_id)
         f.ch = mock.Mock(pika.channel.Channel)
@@ -307,8 +344,30 @@ class TestFsm(TestCase):
                 f._cleanup()
 
         # At the very end a notification should go out no matter what
-        assert send_notification.call_count == 1
+        self.assertEqual(send_notification.call_count, 1)
         assert send_notification.call_args[0][4] == 'failed'
+        post_deploy.assert_called_once()
+
+    @mock.patch.object(FSM, '_post_deploy_action')
+    @mock.patch('recore.fsm.recore.amqp.send_notification')
+    def test__cleanup_failed_post_passes(self, send_notification, post_deploy):
+        """Cleanup fails if update_state raises and post deploy passes"""
+        post_deploy.return_value = True
+        f = FSM(state_id)
+        f.ch = mock.Mock(pika.channel.Channel)
+        f.conn = mock.Mock(pika.connection.Connection)
+        f.failed = True  # Testing the fail notification too
+
+        with mock.patch.object(f, 'update_state',
+                               mock.Mock(side_effect=Exception("derp"))) as (
+                us_exception):
+            with self.assertRaises(Exception):
+                f._cleanup()
+
+        # At the very end a notification should go out no matter what
+        self.assertEqual(send_notification.call_count, 1)
+        assert send_notification.call_args[0][4] == 'failed'
+        post_deploy.assert_called_once()
 
     def test_update_state(self):
         """State updating does the needful"""
@@ -797,3 +856,89 @@ Tests for the case where multiple notification transports (irc, email, etc) are 
         self.assertEqual(send_notification.call_args[0][2], state_id)
         self.assertEqual(send_notification.call_args[0][3], ['#achannel'])
         self.assertEqual(send_notification.call_args[0][4], 'failed')
+
+    @mock.patch.object(FSM, 'move_remaining_to_skipped')
+    @mock.patch.object(FSM, '_run')
+    @mock.patch.object(FSM, 'move_active_to_completed')
+    @mock.patch('recore.fsm.recore.amqp.send_notification')
+    def test_post_deploy_passed(self, send_notification, move_active, run, skipped):
+        """Post-deploy action passes"""
+        f = FSM(state_id)
+
+        msg_completed = {'status': 'completed'}
+
+        consume_iter = [
+            (mock.Mock(name="method_mocked"),
+             mock.Mock(name="properties_mocked"),
+             json.dumps(msg_completed))
+        ]
+
+        # Pre-test scaffolding. Hard-code some mocked out
+        # attributes/variables because we're skipping the usual
+        # initialization steps.
+        f.conn = mock.Mock(pika.connection.Connection)
+        publish = mock.Mock()
+        channel = mock.Mock()
+        channel.consume.return_value = iter(consume_iter)
+        channel.basic_publish = publish
+        f.ch = channel
+        f.active_sequence = {'hosts': ['localhost']}
+        f.group = 'testgroup'
+        f.dynamic = {}
+        f.active_step = new_notify_step('failed')
+        f.post_deploy_action = [
+            {
+                "Update dates": {
+                    "COMMAND": "servicenow",
+                    "SUBCOMMAND": "updatedates",
+                    "PARAMETERS": {
+                        "foo": "bar"
+                    }
+                }
+            }
+        ]
+
+        self.assertEqual(f._post_deploy_action(), True)
+
+    @mock.patch.object(FSM, 'move_remaining_to_skipped')
+    @mock.patch.object(FSM, '_run')
+    @mock.patch.object(FSM, 'move_active_to_completed')
+    @mock.patch('recore.fsm.recore.amqp.send_notification')
+    def test_post_deploy_failed(self, send_notification, move_active, run, skipped):
+        """Post-deploy action fails"""
+        f = FSM(state_id)
+
+        msg_failed = {'status': 'failed', 'data': {'reason': 'it broke'}}
+
+        consume_iter = [
+            (mock.Mock(name="method_mocked"),
+             mock.Mock(name="properties_mocked"),
+             json.dumps(msg_failed))
+        ]
+
+        # Pre-test scaffolding. Hard-code some mocked out
+        # attributes/variables because we're skipping the usual
+        # initialization steps.
+        f.conn = mock.Mock(pika.connection.Connection)
+        publish = mock.Mock()
+        channel = mock.Mock()
+        channel.consume.return_value = iter(consume_iter)
+        channel.basic_publish = publish
+        f.ch = channel
+        f.active_sequence = {'hosts': ['localhost']}
+        f.group = 'testgroup'
+        f.dynamic = {}
+        f.active_step = new_notify_step('failed')
+        f.post_deploy_action = [
+            {
+                "Update dates": {
+                    "COMMAND": "servicenow",
+                    "SUBCOMMAND": "updatedates",
+                    "PARAMETERS": {
+                        "foo": "bar"
+                    }
+                }
+            }
+        ]
+
+        self.assertEqual(f._post_deploy_action(), False)

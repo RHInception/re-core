@@ -5,18 +5,18 @@
         "SERVER": "amqp.example.com",
         "NAME": "username",
         "PASSWORD": "password",
-	"EXCHANGE": "my_exchange",
-	"QUEUE": "re"
+        "EXCHANGE": "my_exchange",
+        "QUEUE": "re"
     },
     "DB": {
-	"SERVERS": [
-	    "mongo01.example.com",
-	    "mongo02.example.com"
-	],
-	"DATABASE": "re",
-	"NAME": "lordmongo",
-	"PASSWORD": "webscale",
-	"PORT": 27017
+        "SERVERS": [
+            "mongo01.example.com",
+            "mongo02.example.com"
+        ],
+        "DATABASE": "re",
+        "NAME": "lordmongo",
+        "PASSWORD": "webscale",
+        "PORT": 27017
     },
     "PHASE_NOTIFICATION": {
         "TABOOT_URL":  "http://example.com/taboot/%s/",
@@ -32,11 +32,21 @@
                 "some_filter": "to find the record"
             },
             "EXPECTATION": {
-		"status": "completed",
-		"data": {
-		    "exists": true
-		}
-	    }
+                "status": "completed",
+                "data": {
+                    "exists": true
+                }
+            }
+        }
+    }],
+    "POST_DEPLOY_ACTION": [{
+        "Update Change Record": {
+            "COMMAND": "servicenow",
+            "SUBCOMMAND": "updatechgrecord",
+            "PARAMETERS": {
+                "project": "myproject",
+                "some_filter": "to find the record"
+            }
         }
     }]
 }
