@@ -102,7 +102,10 @@ def main(args):  # pragma: no cover
 
     try:
         connection = recore.amqp.init_amqp(config)
-        connection.ioloop.start()
+        if not config.get('reconnect', False):
+            connection.ioloop.start()
+        else:
+            connection.run()
     except KeyError, ke:
         out.fatal("Missing a required key in MQ config: %s" % ke)
         notify.fatal("Missing a required key in MQ config: %s" % ke)
@@ -120,7 +123,10 @@ def main(args):  # pragma: no cover
     except KeyboardInterrupt:
         out.info("KeyboardInterrupt sent.")
         notify.info("Keyboard Interrupt sent.")
-        connection.ioloop.stop()
+        if not config.get('reconnect', False):
+            connection.ioloop.stop()
+        else:
+            connection.stop()
         raise SystemExit(0)
 
     out.info('FSM fully initialized')
