@@ -6,7 +6,8 @@
         "NAME": "username",
         "PASSWORD": "password",
         "EXCHANGE": "my_exchange",
-        "QUEUE": "re"
+        "QUEUE": "re",
+        "PORT": 5672
     },
     "DB": {
         "SERVERS": [
