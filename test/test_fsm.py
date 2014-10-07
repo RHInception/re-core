@@ -47,6 +47,15 @@ MQ_CONF = {
     "PORT": 5672
 }
 
+
+# For the send_notification tests
+NOTIFICATION_CONF = {
+    'PHASE_NOTIFICATION': {
+        'TABOOT_URL': 'http://taboot.example.com/%s'
+    }
+}
+
+
 def new_notify_step(*phases):
     _step = {
         "service:Restart": {
@@ -179,8 +188,10 @@ class TestFsm(TestCase):
                     mongo.lookup_state):
                 mongo.lookup_state.return_value = _state
 
-                f._setup()
-                assert f.group == _state['group']
+                with mock.patch('recore.amqp.CONF') as notif_conf:
+                    notif_conf = NOTIFICATION_CONF
+                    f._setup()
+                    assert f.group == _state['group']
 
         # At the very end a notification should go out no matter what
         assert send_notification.call_count == 1
@@ -291,7 +302,9 @@ class TestFsm(TestCase):
             with mock.patch('recore.fsm.dt') as (
                     dt):
                 dt.now.return_value = UTCNOW
-                f._cleanup()
+                with mock.patch('recore.amqp.CONF') as notif_conf:
+                    notif_conf = NOTIFICATION_CONF
+                    f._cleanup()
 
             # update state set the ended item in the state doc.
             us.assert_called_with(_update_state)
@@ -324,8 +337,10 @@ class TestFsm(TestCase):
                 us):
             with mock.patch('recore.fsm.dt') as (
                     dt):
-                dt.now.return_value = UTCNOW
-                f._cleanup()
+                with mock.patch('recore.amqp.CONF') as notif_conf:
+                    notif_conf = NOTIFICATION_CONF
+                    dt.now.return_value = UTCNOW
+                    f._cleanup()
 
             # update state set the ended item in the state doc.
             us.assert_called_with(_update_state)
@@ -350,7 +365,9 @@ class TestFsm(TestCase):
                                mock.Mock(side_effect=Exception("derp"))) as (
                 us_exception):
             with self.assertRaises(Exception):
-                f._cleanup()
+                with mock.patch('recore.amqp.CONF') as notif_conf:
+                    notif_conf = NOTIFICATION_CONF
+                    f._cleanup()
 
         # At the very end a notification should go out no matter what
         self.assertEqual(send_notification.call_count, 1)
@@ -370,8 +387,10 @@ class TestFsm(TestCase):
         with mock.patch.object(f, 'update_state',
                                mock.Mock(side_effect=Exception("derp"))) as (
                 us_exception):
-            with self.assertRaises(Exception):
-                f._cleanup()
+            with mock.patch('recore.amqp.CONF') as notif_conf:
+                notif_conf = NOTIFICATION_CONF
+                with self.assertRaises(Exception):
+                    f._cleanup()
 
         # At the very end a notification should go out no matter what
         self.assertEqual(send_notification.call_count, 1)
