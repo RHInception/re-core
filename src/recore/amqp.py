@@ -25,7 +25,6 @@ import signal
 
 MQ_CONF = {}
 CONF = {}
-#connection = None
 out = logging.getLogger('recore.amqp')
 
 # Special Pika reconnection logging setup. Ripped from
@@ -408,6 +407,27 @@ class WinternewtBusClient(object):  # pragma: no cover
             routing_key=routing_key,
             body=json.dumps(msg),
             properties=props)
+
+
+def send_notification(ch, routing_key, state_id, target, phase, message):
+    """
+    Sends a notification message.
+    """
+    msg = {
+        'slug': message[:80],
+        'message': message,
+        'phase': phase,
+        'target': target,
+    }
+    props = pika.spec.BasicProperties()
+    props.correlation_id = state_id
+    props.reply_to = 'log'
+
+    ch.basic_publish(
+        exchange=MQ_CONF['EXCHANGE'],
+        routing_key=routing_key,
+        body=json.dumps(msg),
+        properties=props)
 
 
 def reject(ch, method, requeue=False):

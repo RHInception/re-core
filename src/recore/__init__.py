@@ -67,6 +67,7 @@ def parse_config(config_path):
         if config.get('RELEASE_LOG_DIR', None):
             recore.fsm.RELEASE_LOG_DIR = os.path.realpath(config.get('RELEASE_LOG_DIR'))
 
+        recore.amqp.MQ_CONF = config['MQ']
     except IOError:
         print "ERROR config doesn't exist"
         raise SystemExit(1)

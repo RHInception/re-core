@@ -38,6 +38,15 @@ _active_step_dict = {
     }
 }
 
+MQ_CONF = {
+    "SERVER": "amqp.example.com",
+    "NAME": "username",
+    "PASSWORD": "password",
+    "EXCHANGE": "my_exchange",
+    "QUEUE": "re",
+    "PORT": 5672
+}
+
 def new_notify_step(*phases):
     _step = {
         "service:Restart": {
@@ -498,7 +507,9 @@ class TestFsm(TestCase):
         channel.basic_publish = publish
         f.ch = channel
 
-        f._run()
+        with mock.patch('recore.amqp.MQ_CONF') as mq_conf:
+            mq_conf = MQ_CONF
+            f._run()
 
         setup.assert_called_once_with()
         dequeue.assert_called_once_with()
@@ -634,7 +645,9 @@ Tests for the case where only one notification transport (irc, email, etc) is de
 
         # Run the method now. It should terminate when it reaches the
         # end of _run() with a call to a mocked out on_started()
-        f._run()
+        with mock.patch('recore.amqp.MQ_CONF') as mq_conf:
+            mq_conf = MQ_CONF
+            f._run()
 
         self.assertEqual(send_notification.call_count, 1)
         self.assertEqual(send_notification.call_args[0][1], 'notify.irc')
@@ -759,7 +772,9 @@ Tests for the case where only one notification transport (irc, email, etc) is de
 
         # Run the method now. It should terminate when it reaches the
         # end of _run() with a call to a mocked out on_started()
-        f._run()
+        with mock.patch('recore.amqp.MQ_CONF') as mq_conf:
+            mq_conf = MQ_CONF
+            f._run()
 
         self.assertEqual(send_notification.call_count, 0)
 
@@ -811,7 +826,9 @@ Tests for the case where multiple notification transports (irc, email, etc) are 
 
         # Run the method now. It should terminate when it reaches the
         # end of _run() with a call to a mocked out on_started()
-        f._run()
+        with mock.patch('recore.amqp.MQ_CONF') as mq_conf:
+            mq_conf = MQ_CONF
+            f._run()
 
         self.assertEqual(send_notification.call_count, 2)
 
@@ -898,7 +915,9 @@ Tests for the case where multiple notification transports (irc, email, etc) are 
             }
         ]
 
-        self.assertEqual(f._post_deploy_action(), True)
+        with mock.patch('recore.amqp.MQ_CONF') as mq_conf:
+            mq_conf = MQ_CONF
+            self.assertEqual(f._post_deploy_action(), True)
 
     @mock.patch.object(FSM, 'move_remaining_to_skipped')
     @mock.patch.object(FSM, '_run')
@@ -941,4 +960,6 @@ Tests for the case where multiple notification transports (irc, email, etc) are 
             }
         ]
 
-        self.assertEqual(f._post_deploy_action(), False)
+        with mock.patch('recore.amqp.MQ_CONF') as mq_conf:
+            mq_conf = MQ_CONF
+            self.assertEqual(f._post_deploy_action(), False)
