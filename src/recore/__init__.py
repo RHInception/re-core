@@ -101,11 +101,8 @@ def main(args):  # pragma: no cover
         raise SystemExit(1)
 
     try:
-        connection = recore.amqp.init_amqp(config)
-        if not config.get('reconnect', False):
-            connection.ioloop.start()
-        else:
-            connection.run()
+        connection = recore.amqp.WinternewtBusClient(config)
+        connection.run()
     except KeyError, ke:
         out.fatal("Missing a required key in MQ config: %s" % ke)
         notify.fatal("Missing a required key in MQ config: %s" % ke)
@@ -123,10 +120,7 @@ def main(args):  # pragma: no cover
     except KeyboardInterrupt:
         out.info("KeyboardInterrupt sent.")
         notify.info("Keyboard Interrupt sent.")
-        if not config.get('reconnect', False):
-            connection.ioloop.stop()
-        else:
-            connection.stop()
+        connection.stop()
         raise SystemExit(0)
 
     out.info('FSM fully initialized')

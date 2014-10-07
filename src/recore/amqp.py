@@ -16,6 +16,7 @@
 
 import logging
 import json
+import time
 import pika
 import recore.fsm
 import recore.job.create
@@ -24,7 +25,7 @@ import signal
 
 MQ_CONF = {}
 CONF = {}
-connection = None
+#connection = None
 out = logging.getLogger('recore.amqp')
 
 # Special Pika reconnection logging setup. Ripped from
@@ -61,7 +62,6 @@ class WinternewtBusClient(object):  # pragma: no cover
         self.EXCHANGE_TYPE = 'topic'
         self.QUEUE = c['QUEUE']
         self.ROUTING_KEY = 'job.create'
-        self._connection = None
         self._channel = None
         self._closing = False
         self._consumer_tag = None
@@ -85,9 +85,15 @@ class WinternewtBusClient(object):  # pragma: no cover
         out.debug('Attemtping to open channel with connect string: %s' % (
             connect_string))
 
-        return pika.SelectConnection(parameters=self._params,
-                                     on_open_callback=self.on_connection_open,
-                                     stop_ioloop_on_close=False)
+        try:
+            return pika.SelectConnection(
+                parameters=self._params,
+                on_open_callback=self.on_connection_open,
+                stop_ioloop_on_close=False)
+        except pika.exceptions.AMQPConnectionError, ae:
+            # This means we couldn't connect, so act like a reconnect
+            out.warn('Unable to make connection: %s' % ae.message)
+            self.on_connection_closed(None, -1, str(ae))
 
     def close_connection(self):
         """This method closes the connection to RabbitMQ."""
@@ -118,7 +124,8 @@ class WinternewtBusClient(object):  # pragma: no cover
         else:
             LOGGER.warning('Connection closed, reopening in 5 seconds: (%s) %s',
                            reply_code, reply_text)
-            self._connection.add_timeout(5, self.reconnect)
+            time.sleep(5)
+            self.reconnect()
 
     def on_connection_open(self, unused_connection):
         """This method is called by pika once the connection to RabbitMQ has
@@ -137,8 +144,9 @@ class WinternewtBusClient(object):  # pragma: no cover
         closed. See the on_connection_closed method.
 
         """
-        # This is the old connection IOLoop instance, stop its ioloop
-        self._connection.ioloop.stop()
+        if getattr(self, '_connection', None):
+            # This is the old connection IOLoop instance, stop its ioloop
+            self._connection.ioloop.stop()
 
         if not self._closing:
 
@@ -382,54 +390,24 @@ class WinternewtBusClient(object):  # pragma: no cover
         self._connection.ioloop.start()
         LOGGER.info('Stopped')
 
-
-def init_amqp(conf):
-    """Open a channel to our AMQP server"""
-    import recore.amqp
-    recore.amqp.MQ_CONF = conf['MQ']
-    recore.amqp.CONF = conf
-
-    # Default to reconnect=False. If so, run this block of code
-    if not conf.get('reconnect', False):
-        creds = pika.credentials.PlainCredentials(
-            conf['MQ']['NAME'], conf['MQ']['PASSWORD'])
-        params = pika.ConnectionParameters(
-            host=str(conf['MQ']['SERVER']),
-            credentials=creds)
-
-        connect_string = "amqp://%s:******@%s:%s/%s" % (
-            conf['MQ']['NAME'], conf['MQ']['SERVER'],
-            conf['MQ']['PORT'], conf['MQ']['EXCHANGE'])
-        out.debug('Attemtping to open channel with connect string: %s' % (
-            connect_string))
-        recore.amqp.connection = pika.SelectConnection(parameters=params,
-                                                       on_open_callback=on_open)
-        return recore.amqp.connection
-    else:
-        consumer = WinternewtBusClient(conf)
-        return consumer
-
-
-def on_open(connection):
-    """
-    Call back when a connection is opened.
-    """
-    out.debug("Opened AMQP connection")
-    connection.channel(on_channel_open)
-
-
-def on_channel_open(channel):
-    """
-    Call back when a channel is opened.
-    """
-    out.debug("MQ channel opened. Declaring exchange ...")
-    channel.exchange_declare(exchange=MQ_CONF['EXCHANGE'],
-                             durable=True,
-                             exchange_type='topic')
-    consumer_tag = channel.basic_consume(
-        receive,
-        queue=MQ_CONF['QUEUE'])
-    return consumer_tag
+    def send_notification(self, ch, routing_key, state_id, target, phase, message):
+        """
+        Sends a notification message.
+        """
+        msg = {
+            'slug': message[:80],
+            'message': message,
+            'phase': phase,
+            'target': target,
+        }
+        props = pika.spec.BasicProperties()
+        props.correlation_id = state_id
+        props.reply_to = 'log'
+        ch.basic_publish(
+            exchange=self.c['EXCHANGE'],
+            routing_key=routing_key,
+            body=json.dumps(msg),
+            properties=props)
 
 
 def reject(ch, method, requeue=False):
@@ -439,27 +417,6 @@ def reject(ch, method, requeue=False):
     ch.basic_reject(
         method.delivery_tag,
         requeue=requeue)
-
-
-def send_notification(ch, routing_key, state_id, target, phase, message):
-    """
-    Sends a notification message.
-    """
-    msg = {
-        'slug': message[:80],
-        'message': message,
-        'phase': phase,
-        'target': target,
-    }
-    props = pika.spec.BasicProperties()
-    props.correlation_id = state_id
-    props.reply_to = 'log'
-
-    ch.basic_publish(
-        exchange=MQ_CONF['EXCHANGE'],
-        routing_key=routing_key,
-        body=json.dumps(msg),
-        properties=props)
 
 
 def receive(ch, method, properties, body):
@@ -478,7 +435,6 @@ def receive(ch, method, properties, body):
         return
     topic = method.routing_key
     out.debug("Message: %s" % msg)
-    ch.basic_ack(delivery_tag=method.delivery_tag)
 
     if topic == 'job.create':
         id = None
@@ -539,8 +495,7 @@ def main():
     with open('../../fake-settings.json') as settings:
         config = json.load(settings)
 
-    example = init_amqp(config)
-    # example = WinternewtBusClient(config)
+    example = WinternewtBusClient(config)
     try:
         example.run()
     except KeyboardInterrupt:

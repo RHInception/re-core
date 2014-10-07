@@ -77,79 +77,98 @@ class TestAMQP(TestCase):
         """
         connection.reset_mock()
 
-    def test_init_amqp(self):
+    def test_winternewt_bus_client(self):
         """
-        Verify using init_amqp provides us with a connection
+        Verify using WinternewtBusClient provides us with a useable object.
         """
         with mock.patch('pika.ConnectionParameters'):
             with mock.patch('pika.SelectConnection'):
-                result = amqp.init_amqp(CONF)
+                result = amqp.WinternewtBusClient(CONF)
                 call_args = pika.ConnectionParameters.call_args_list[0][1]
                 assert call_args['host'] == CONF['MQ']['SERVER']
                 call_args['credentials'].username == CONF['MQ']['NAME']
                 call_args['credentials'].password == CONF['MQ']['PASSWORD']
 
+    def test_winternewt_bus_client_run(self):
+        """
+        Verify using WinternewtBusClient.run opens a connection and starts
+        the ioloop.
+        """
+        with mock.patch('pika.ConnectionParameters'):
+            with mock.patch('pika.SelectConnection'):
+                result = amqp.WinternewtBusClient(CONF)
+                result.run()
+
                 pika.SelectConnection.assert_called_once_with(
-                    parameters=mock.ANY,
-                    on_open_callback=amqp.on_open)
+                   parameters=mock.ANY,
+                   on_open_callback=result.on_connection_open,
+                   stop_ioloop_on_close=False)
 
-                # The result is expected to be the same as a module global
-                assert result == amqp.connection
+                pika.SelectConnection.ioloop.start.assert_called_once()
 
-    def test_on_open(self):
+    def test_winternewt_bus_client_on_open(self):
         """
         Make sure that on_open chains properly
         """
-        with mock.patch('pika.connection') as connection:
-            amqp.on_open(connection)
-            connection.channel.assert_called_once_with(amqp.on_channel_open)
+        with mock.patch('pika.ConnectionParameters'):
+            with mock.patch('pika.SelectConnection'):
+                with mock.patch('pika.connection') as connection:
+                    with mock.patch('recore.amqp.WinternewtBusClient.open_channel') as oc:
+                        result = amqp.WinternewtBusClient(CONF)
+                        result.run()
+                        result.on_connection_open(connection)
+                        oc.assert_called_once()
 
-    def test_on_channel_open(self):
+    def test_winternewt_on_channel_open(self):
         """
         Make sure that on_channel_open chains properly
         """
         with mock.patch('pika.connection.channel') as channel:
-            consumer_tag = 1
-            channel.basic_consume.return_value = consumer_tag
-            result = amqp.on_channel_open(channel)
+            with mock.patch('pika.ConnectionParameters'):
+                with mock.patch('pika.SelectConnection'):
+                    result = amqp.WinternewtBusClient(CONF)
 
-            # Verify expected calls
-            channel.exchange_declare.assert_called_once_with(
-                exchange=CONF['MQ']['EXCHANGE'],
-                durable=True,
-                exchange_type='topic')
+                    consumer_tag = 1
+                    channel.basic_consume.return_value = consumer_tag
+                    data = result.on_channel_open(channel)
 
-            channel.basic_consume.assert_called_once_with(
-                amqp.receive,
-                queue=CONF['MQ']['QUEUE'])
+                    # Verify expected calls
+                    channel.exchange_declare.assert_called_once_with(
+                        exchange=CONF['MQ']['EXCHANGE'],
+                        durable=True,
+                        exchange_type='topic',
+                        callback=result.on_exchange_declareok,
+                    )
 
-            assert result == consumer_tag
-
-    def test_send_notification(self):
+    def test_winternewt_send_notification(self):
         """
         Make sure that send_notification sends the proper message to the bus.
         """
 
-        with mock.patch('pika.connection.channel') as channel:
-            amqp.send_notification(
-                channel,
-                'notify.test',
-                '123456',
-                ['someone'],
-                'started',
-                'my message')
+        with mock.patch('pika.ConnectionParameters'):
+            with mock.patch('pika.SelectConnection'):
+                result = amqp.WinternewtBusClient(CONF)
 
-            expected_body = json.dumps({
-                'slug': 'my message',
-                'message': 'my message',
-                'phase': 'started',
-                'target': ['someone'],
-            })
+                with mock.patch('pika.connection.channel') as channel:
+                    result.send_notification(
+                        channel,
+                        'notify.test',
+                        '123456',
+                        ['someone'],
+                        'started',
+                        'my message')
 
-            assert channel.basic_publish.call_count == 1
-            assert channel.basic_publish.call_args[1]['routing_key'] == 'notify.test'
-            assert channel.basic_publish.call_args[1]['body'] == expected_body
+                    expected_body = json.dumps({
+                        'slug': 'my message',
+                        'message': 'my message',
+                        'phase': 'started',
+                        'target': ['someone'],
+                    })
 
+                    assert channel.basic_publish.call_count == 1
+                    assert channel.basic_publish.call_args[1]['routing_key'] == 'notify.test'
+                    assert channel.basic_publish.call_args[1]['body'] == expected_body
+'''
     def test_job_create(self):
         """
         Verify when topic job.create is received the FSM handles it properly
@@ -245,3 +264,4 @@ class TestAMQP(TestCase):
                     assert amqp.recore.fsm.FSM.call_count == 0
                     amqp.reject.assert_called_once_with(
                         channel, method, False)
+                    '''

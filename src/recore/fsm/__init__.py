@@ -490,6 +490,7 @@ Returns `None` if no action was required. Else, returns `True`
             self.app_logger.debug("Cleaned up all leftovers. We should terminate next")
 
     def _connect_mq(self):
+        # TODO: Use the same bus client as core
         mq = recore.amqp.MQ_CONF
         creds = pika.credentials.PlainCredentials(mq['NAME'], mq['PASSWORD'])
         connection = pika.BlockingConnection(pika.ConnectionParameters(
