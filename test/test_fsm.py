@@ -47,6 +47,25 @@ MQ_CONF = {
     "PORT": 5672
 }
 
+# For pre-deploy check tests
+PRE_DEPLOY_CONF = {
+    "PRE_DEPLOY_CHECK": [{
+        "Require Change Record": {
+            "COMMAND": "servicenow",
+            "SUBCOMMAND": "getchangerecord",
+            "PARAMETERS": {
+                "project": "myproject",
+                "some_filter": "to find the record"
+            },
+            "EXPECTATION": {
+                "status": "completed",
+                "data": {
+                    "exists": True
+                }
+            }
+        }
+    }],
+}
 
 # For the send_notification tests
 NOTIFICATION_CONF = {
@@ -197,13 +216,14 @@ class TestFsm(TestCase):
         assert send_notification.call_count == 1
         assert send_notification.call_args[0][4] == 'started'
 
+    @mock.patch('recore.fsm.recore.amqp.CONF')
     @mock.patch.object(FSM, 'move_remaining_to_skipped')
     @mock.patch('recore.fsm.recore.amqp.send_notification')
-    def test__setup_failed_pre_deploy_check(self, send_notification, move_remaining):
+    def test__setup_failed_pre_deploy_check(self, send_notification, move_remaining, amqp_conf):
         """Setup fails with an existing state document and a failed pre-deploy check"""
         f = FSM(state_id)
         # An AMQP connection hasn't been made yet
-
+        amqp_conf.get.return_value = PRE_DEPLOY_CONF['PRE_DEPLOY_CHECK']
         msg_started = {'status': 'completed', 'data': {'exists': False}}
 
         consume_iter = [
@@ -228,8 +248,10 @@ class TestFsm(TestCase):
                     mongo.lookup_state):
                 mongo.lookup_state.return_value = _state
 
-                f._setup()
-                assert f.group == _state['group']
+                with mock.patch('recore.amqp.MQ_CONF') as mq_conf:
+                    mq_conf = MQ_CONF
+                    f._setup()
+                    assert f.group == _state['group']
 
         # No matter where a release fails, 'move_remaining_to_skipped' will be called
         move_remaining.assert_called_once_with()
@@ -241,7 +263,9 @@ class TestFsm(TestCase):
         assert send_notification.call_args[0][4] == 'started'
 
         # After first_run finishes self.failed should be True
-        f._cleanup()
+        with mock.patch('recore.amqp.MQ_CONF') as mq_conf:
+            mq_conf = MQ_CONF
+            f._cleanup()
         assert send_notification.call_count == 2
         assert send_notification.call_args[0][4] == 'failed'
         assert f.failed == True
