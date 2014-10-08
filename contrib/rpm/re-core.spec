@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.4
-Release: 2%{?dist}
+Release: 3%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -54,6 +54,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Tue Oct 08 2014 Ryan Cook <rcook@redhat.com> - 0.0.4-3
+- Version bump to include ability for FSM reconnection
+
 * Tue Sep 23 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.4-2
 - Now with POST_DEPLOY_ACTIONs
 
