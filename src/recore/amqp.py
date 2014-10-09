@@ -212,10 +212,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         LOGGER.info('Queue details: name: {name}, durability: {durability}'.format(
             name=queue_name, durability=True))
 
-        LOGGER.info('Binding %s to %s with %s',
-                    self.EXCHANGE, self.QUEUE, self.ROUTING_KEY)
-        self._channel.queue_bind(self.on_bindok, self.QUEUE,
-                                 self.EXCHANGE, self.ROUTING_KEY)
+        self.start_consuming()
 
     def add_on_cancel_callback(self):
         """Add a callback that will be invoked if RabbitMQ cancels the consumer
@@ -303,17 +300,6 @@ class WinternewtBusClient(object):  # pragma: no cover
         self._consumer_tag = self._channel.basic_consume(self.on_message,
                                                          self.QUEUE)
 
-    def on_bindok(self, unused_frame):
-        """Invoked by pika when the Queue.Bind method has completed. At this
-        point we will start consuming messages by calling start_consuming
-        which will invoke the needed RPC commands to start the process.
-
-        :param pika.frame.Method unused_frame: The Queue.BindOk response frame
-
-        """
-        LOGGER.info('Queue bound')
-        self.start_consuming()
-
     def close_channel(self):
         """Call to close the channel with RabbitMQ cleanly by issuing the
         Channel.Close RPC command.
@@ -376,7 +362,9 @@ class WinternewtBusClient(object):  # pragma: no cover
             properties=props)
 
 
-def send_notification(ch, routing_key, state_id, target, phase, message):
+# TODO: Delete this old function
+
+def send_notification(ch, routing_key, state_id, target, phase, message):  # pragma no cover
     """
     Sends a notification message.
     """
@@ -476,7 +464,10 @@ def sighandler(signal, frame):
     os.killpg(os.getpgid(0), signal.SIGQUIT)
 
 
-def main():
+def main():  # pragma no cover
+    """
+    Example main function.
+    """
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
     import json
     with open('../../fake-settings.json') as settings:

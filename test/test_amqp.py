@@ -133,11 +133,7 @@ class TestAMQP(TestCase):
                     data = result.on_channel_open(channel)
 
                     # Verify expected calls
-                    channel.queue_bind.assert_called_once_with(
-                        result.on_bindok,
-                        CONF['MQ']['QUEUE'],
-                        CONF['MQ']['EXCHANGE'],
-                        result.ROUTING_KEY)
+                    channel.start_consuming.assert_called_once()
 
     def test_winternewt_send_notification(self):
         """
@@ -167,7 +163,7 @@ class TestAMQP(TestCase):
                     assert channel.basic_publish.call_count == 1
                     assert channel.basic_publish.call_args[1]['routing_key'] == 'notify.test'
                     assert channel.basic_publish.call_args[1]['body'] == expected_body
-'''
+
     def test_job_create(self):
         """
         Verify when topic job.create is received the FSM handles it properly
@@ -263,4 +259,3 @@ class TestAMQP(TestCase):
                     assert amqp.recore.fsm.FSM.call_count == 0
                     amqp.reject.assert_called_once_with(
                         channel, method, False)
-                    '''
