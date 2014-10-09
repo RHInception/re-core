@@ -133,12 +133,11 @@ class TestAMQP(TestCase):
                     data = result.on_channel_open(channel)
 
                     # Verify expected calls
-                    channel.exchange_declare.assert_called_once_with(
-                        exchange=CONF['MQ']['EXCHANGE'],
-                        durable=True,
-                        exchange_type='topic',
-                        callback=result.on_exchange_declareok,
-                    )
+                    channel.queue_bind.assert_called_once_with(
+                        result.on_bindok,
+                        CONF['MQ']['QUEUE'],
+                        CONF['MQ']['EXCHANGE'],
+                        result.ROUTING_KEY)
 
     def test_winternewt_send_notification(self):
         """

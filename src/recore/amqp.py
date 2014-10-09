@@ -194,57 +194,24 @@ class WinternewtBusClient(object):  # pragma: no cover
         self.setup_exchange(self.EXCHANGE)
 
     def setup_exchange(self, exchange_name):
-        """Setup the exchange on RabbitMQ by invoking the Exchange.Declare RPC
-        command. When it is complete, the on_exchange_declareok method will
-        be invoked by pika.
+        """Setup the exchange on RabbitMQ.
 
-        :param str|unicode exchange_name: The name of the exchange to declare
+        :param str|unicode exchange_name: The name of the exchange
 
         """
-        LOGGER.info('Declaring exchange %s', exchange_name)
         LOGGER.info('Exchange details: name: {name}, type: {type}, durability: {durability}'.format(
             name=exchange_name, type=self.EXCHANGE_TYPE, durability=True))
-        self._channel.exchange_declare(callback=self.on_exchange_declareok,
-                                       exchange=exchange_name,
-                                       durable=True,
-                                       exchange_type=self.EXCHANGE_TYPE)
-
-    def on_exchange_declareok(self, unused_frame):
-        """Invoked by pika when RabbitMQ has finished the Exchange.Declare RPC
-        command.
-
-        :param pika.Frame.Method unused_frame: Exchange.DeclareOk response frame
-
-        """
-        LOGGER.info('Exchange declared')
         self.setup_queue(self.QUEUE)
 
     def setup_queue(self, queue_name):
-        """Setup the queue on RabbitMQ by invoking the Queue.Declare RPC
-        command. When it is complete, the on_queue_declareok method will
-        be invoked by pika.
+        """Setup the queue on RabbitMQ.
 
-        :param str|unicode queue_name: The name of the queue to declare.
+        :param str|unicode queue_name: The name of the queue
 
         """
-        LOGGER.info('Declaring queue %s', queue_name)
         LOGGER.info('Queue details: name: {name}, durability: {durability}'.format(
             name=queue_name, durability=True))
 
-        self._channel.queue_declare(callback=self.on_queue_declareok,
-                                    queue=queue_name,
-                                    durable=True)
-
-    def on_queue_declareok(self, method_frame):
-        """Method invoked by pika when the Queue.Declare RPC call made in
-        setup_queue has completed. In this method we will bind the queue
-        and exchange together with the routing key by issuing the Queue.Bind
-        RPC command. When this command is complete, the on_bindok method will
-        be invoked by pika.
-
-        :param pika.frame.Method method_frame: The Queue.DeclareOk frame
-
-        """
         LOGGER.info('Binding %s to %s with %s',
                     self.EXCHANGE, self.QUEUE, self.ROUTING_KEY)
         self._channel.queue_bind(self.on_bindok, self.QUEUE,
