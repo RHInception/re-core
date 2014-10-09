@@ -46,13 +46,19 @@ class TestRecoreInit(TestCase):
         with mock.patch('recore.start_logging'):
             with self.assertRaises(SystemExit):
                 cfg = recore.parse_config(self.config_file_dne)
+                assert recore.amq.MQ_CONF is {}
+
         # Case 2: File is not valid json
         with mock.patch('recore.start_logging'):
             with self.assertRaises(SystemExit):
                 cfg = recore.parse_config(self.config_file_invalid)
+                assert recore.amq.CONF is {}
+                assert recore.amq.MQ_CONF is {}
         # Case 3: File exists and is valid json
         with mock.patch('recore.start_logging'):
             cfg = recore.parse_config(self.config_file_valid)
+            assert recore.amqp.CONF is cfg
+            assert recore.amqp.MQ_CONF is cfg['MQ']
 
     @mock.patch('recore.mongo.connect')
     def test_init_mongo(self, mongo_connect):
