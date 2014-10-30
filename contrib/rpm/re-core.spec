@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.4
-Release: 5%{?dist}
+Release: 6%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -54,6 +54,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Tue Oct 30 2014 Ryan Cook <rcook@redhat.com> - 0.0.4-6
+- Creation of SSL request.
+
 * Tue Oct  9 2014 Steve Milner <stevem@gnulinux.net> - 0.0.4-5
 - Removed queue re-binding.
 

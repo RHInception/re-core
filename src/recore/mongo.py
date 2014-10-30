@@ -36,18 +36,19 @@ def init_mongo(db):
         db['PORT'],
         db['NAME'],
         db['PASSWORD'],
-        db['DATABASE'])
+        db['DATABASE'],
+        db['SSL'])
     recore.mongo.connection = c
     recore.mongo.database = d
 
 
-def connect(host, port, user, password, db):
+def connect(host, port, user, password, db, ssl):
     # First, escape the parameters
     (n, p) = escape_credentials(user, password)
-    connect_string = "mongodb://%s:%s@%s:%s/%s" % (
-        n, p, host, port, db)
-    cs_clean = "mongodb://%s:******@%s:%s/%s" % (
-        n, host, port, db)
+    connect_string = "mongodb://%s:%s@%s:%s/%s?ssl=%s" % (
+        n, p, host, port, db, ssl)
+    cs_clean = "mongodb://%s:******@%s:%s/%s?ssl=%s" % (
+        n, host, port, db, ssl)
     out = logging.getLogger('recore')
     connection = MongoClient(connect_string)
     db = connection[db]
