@@ -79,7 +79,7 @@ class TestMongo(TestCase):
             db = "database"
             ssl = "true"
 
-            result = mongo.connect(host, port, user, passwd, db)
+            result = mongo.connect(host, port, user, passwd, db, ssl)
 
             mongo.MongoClient.assert_called_with("mongodb://%s:%s@%s:%s/%s?ssl=%s" % (
                 user, passwd, host, port, db, ssl))
