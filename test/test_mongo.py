@@ -77,11 +77,12 @@ class TestMongo(TestCase):
             host = "127.0.0.1"
             port = 1234
             db = "database"
+            ssl = "true"
 
             result = mongo.connect(host, port, user, passwd, db)
 
-            mongo.MongoClient.assert_called_with("mongodb://%s:%s@%s:%s/%s" % (
-                user, passwd, host, port, db))
+            mongo.MongoClient.assert_called_with("mongodb://%s:%s@%s:%s/%s?ssl=%s" % (
+                user, passwd, host, port, db, ssl))
             assert result[0] == connection
             assert result[1] == connection[db]
 

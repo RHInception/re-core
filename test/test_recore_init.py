@@ -74,7 +74,8 @@ class TestRecoreInit(TestCase):
             "DATABASE": "re",
             "NAME": "lordmongo",
             "PASSWORD": "webscale",
-            "PORT": 27017
+            "PORT": 27017,
+            "SSL": "true"
         }
         recore.mongo.init_mongo(connect_params)
 
