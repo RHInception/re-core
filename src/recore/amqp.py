@@ -81,7 +81,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         connect_string = "amqp://%s:******@%s:%s/%s" % (
             self.c['NAME'], self.c['SERVER'],
             self.c['PORT'], self.c['EXCHANGE'])
-        out.debug('Attemtping to open channel with connect string: %s' % (
+        out.debug('Attempting to open channel with connect string: %s' % (
             connect_string))
 
         try:
