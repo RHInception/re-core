@@ -43,6 +43,7 @@ MQ_CONF = {
     "NAME": "username",
     "PASSWORD": "password",
     "EXCHANGE": "my_exchange",
+    "VHOST": "/",
     "QUEUE": "re",
     "PORT": 5672
 }
@@ -155,27 +156,21 @@ class TestFsm(TestCase):
     @mock.patch('recore.fsm.pika.PlainCredentials')
     @mock.patch('recore.fsm.pika.channel.Channel')
     @mock.patch('recore.fsm.pika.BlockingConnection')
-    @mock.patch('recore.fsm.recore.amqp.MQ_CONF')
-    def test__connect_mq(self, mq_conf, connection, channel, creds):
+    def test__connect_mq(self, connection, channel, creds):
         """FSM connecting to AMQP sets its reply_queue attribute"""
-        mq_conf = {
-            'NAME': 'user',
-            'PASSWORD': 'pass',
-            'SERVER': '127.0.0.1',
-            'EXCHANGE': 'foochange'
-        }
-        creds.return_value = mock.MagicMock(spec=pika.credentials.PlainCredentials, name="mocked creds")
-        mocked_conn = mock.MagicMock(spec=pika.connection.Connection, name="mocked connection")
-        mocked_channel = mock.MagicMock(spec=pika.channel.Channel, name="mocked channel")
-        channel.return_value = mocked_channel
-        channel.queue_declare.return_value.method.queue = temp_queue
-        mocked_conn.channel.return_value = channel
-        connection.return_value = mocked_conn
+        with mock.patch.dict('recore.fsm.recore.amqp.MQ_CONF', MQ_CONF):
+            creds.return_value = mock.MagicMock(spec=pika.credentials.PlainCredentials, name="mocked creds")
+            mocked_conn = mock.MagicMock(spec=pika.connection.Connection, name="mocked connection")
+            mocked_channel = mock.MagicMock(spec=pika.channel.Channel, name="mocked channel")
+            channel.return_value = mocked_channel
+            channel.queue_declare.return_value.method.queue = temp_queue
+            mocked_conn.channel.return_value = channel
+            connection.return_value = mocked_conn
 
-        f = FSM(state_id)
-        (ch, conn) = f._connect_mq()
-        self.assertEqual(f.reply_queue, temp_queue, msg="Expected %s for reply_queue, instead got %s" %
-                         (temp_queue, f.reply_queue))
+            f = FSM(state_id)
+            (ch, conn) = f._connect_mq()
+            self.assertEqual(f.reply_queue, temp_queue, msg="Expected %s for reply_queue, instead got %s" %
+                             (temp_queue, f.reply_queue))
 
     @mock.patch('recore.fsm.recore.amqp.send_notification')
     def test__setup(self, send_notification):
