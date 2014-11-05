@@ -31,7 +31,8 @@ CONF = {
         "SERVER": "127.0.0.1",
         "PORT": 12345,
         "EXCHANGE": "re",
-        "QUEUE": "testqueue"
+        "QUEUE": "testqueue",
+        "VHOST": "/"
     },
     "DB": {
 	"SERVERS": [

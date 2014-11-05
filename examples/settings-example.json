@@ -7,7 +7,9 @@
         "PASSWORD": "password",
         "EXCHANGE": "my_exchange",
         "QUEUE": "re",
-        "PORT": 5672
+        "VHOST": "/",
+        "PORT": 5671,
+        "SSL": true
     },
     "DB": {
         "SERVERS": [

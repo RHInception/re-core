@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+import ssl
 import json
 import time
 import pika
@@ -64,10 +65,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         self._channel = None
         self._closing = False
         self._consumer_tag = None
-        self._creds = pika.credentials.PlainCredentials(
-            c['NAME'], c['PASSWORD'])
-        self._params = pika.ConnectionParameters(
-            host=str(c['SERVER']), credentials=self._creds)
+        (self._params, self._connection_string) = self._parse_connect_params(c)
         self.c = c
 
     def connect(self):
@@ -78,11 +76,8 @@ class WinternewtBusClient(object):  # pragma: no cover
         :rtype: pika.SelectConnection
 
         """
-        connect_string = "amqp://%s:******@%s:%s/%s" % (
-            self.c['NAME'], self.c['SERVER'],
-            self.c['PORT'], self.c['EXCHANGE'])
         out.debug('Attempting to open channel with connect string: %s' % (
-            connect_string))
+            self._connection_string))
 
         try:
             return pika.SelectConnection(
@@ -360,6 +355,52 @@ class WinternewtBusClient(object):  # pragma: no cover
             routing_key=routing_key,
             body=json.dumps(msg),
             properties=props)
+
+    def _parse_connect_params(self, mq_config):
+        """Parse the given dictionary ``mq_config``. Return connection params,
+        and a properly formatted AMQP connection string with the
+        password masked out.
+
+        The default port for SSL/Non-SSL connections is selected
+        automatically if port is not supplied. If a port is supplied
+        then that port is used instead.
+
+        SSL is false by default. Enabling SSL and setting a port
+        manually will use the supplied port.
+        """
+        _ssl_port = 5671
+        _non_ssl_port = 5672
+
+        self._creds = pika.PlainCredentials(mq_config['NAME'], mq_config['PASSWORD'])
+
+        # SSL is set to 'True' in the config file
+        if mq_config.get('SSL', False):
+            _ssl = True
+            _ssl_qp = "?ssl=t&ssl_options={ssl_version=ssl.PROTOCOL_TLSv1}"
+            # Use the provided port, or the default SSL port if no
+            # port is supplied
+            _port = mq_config.get('PORT', _ssl_port)
+        else:
+            _ssl = False
+            _ssl_qp = '?ssl=f'
+            # Use the provided port, or the default non-ssl connection
+            # port if no port was supplied
+            _port = mq_config.get('PORT', _non_ssl_port)
+
+        con_params = pika.ConnectionParameters(
+            host=mq_config['SERVER'],
+            port=_port,
+            virtual_host=mq_config['VHOST'],
+            credentials=self._creds,
+            ssl=_ssl,
+            ssl_options={'ssl_version': ssl.PROTOCOL_TLSv1}
+        )
+
+        connection_string = 'Connection params set as amqp://%s:***@%s:%s%s%s' % (
+            mq_config['NAME'], mq_config['SERVER'],
+            _port, mq_config['VHOST'], _ssl_qp)
+
+        return (con_params, connection_string)
 
 
 # TODO: Delete this old function

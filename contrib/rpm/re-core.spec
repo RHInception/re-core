@@ -8,8 +8,8 @@
 
 Name: re-core
 Summary: FSM of the Inception Release Engine
-Version: 0.0.4
-Release: 6%{?dist}
+Version: 0.0.5
+Release: 1%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -54,6 +54,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Wed Nov  5 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.5-1
+- Now with SSL connecting abilities
+
 * Tue Oct 30 2014 Ryan Cook <rcook@redhat.com> - 0.0.4-6
 - Creation of SSL request.
 
