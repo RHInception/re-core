@@ -638,8 +638,8 @@ worker.
     def _pre_deploy_check(self):
         """This is the pre-deployment check that runs when the FSM first spins
 up."""
-        for pre_check in self.pre_deploy_check:
-            (pre_check_key, pre_check_data) = pre_check.items()[0]
+        for pre_check_data in self.pre_deploy_check:
+            pre_check_key = pre_check_data['NAME']
             self.app_logger.info('Executing pre-deploy-check %s' % (
                 pre_check_key))
 
@@ -703,8 +703,8 @@ up."""
     def _post_deploy_action(self):
         """This is the post-deployment check that runs when the FSM is
 preparing to finish a deployment."""
-        for post_check in self.post_deploy_action:
-            (post_check_key, post_check_data) = post_check.items()[0]
+        for post_check_data in self.post_deploy_action:
+            post_check_key = post_check_data['NAME']
             self.app_logger.info('Executing post-deploy-action %s' % (
                 post_check_key))
 

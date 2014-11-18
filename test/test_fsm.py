@@ -50,8 +50,9 @@ MQ_CONF = {
 
 # For pre-deploy check tests
 PRE_DEPLOY_CONF = {
-    "PRE_DEPLOY_CHECK": [{
-        "Require Change Record": {
+    "PRE_DEPLOY_CHECK": [
+        {
+            "NAME": "Require Change Record",
             "COMMAND": "servicenow",
             "SUBCOMMAND": "getchangerecord",
             "PARAMETERS": {
@@ -65,7 +66,7 @@ PRE_DEPLOY_CONF = {
                 }
             }
         }
-    }],
+    ]
 }
 
 # For the send_notification tests
@@ -943,12 +944,11 @@ Tests for the case where multiple notification transports (irc, email, etc) are 
         f.active_step = new_notify_step('failed')
         f.post_deploy_action = [
             {
-                "Update dates": {
-                    "COMMAND": "servicenow",
-                    "SUBCOMMAND": "updatedates",
-                    "PARAMETERS": {
-                        "foo": "bar"
-                    }
+                "NAME": "Update dates",
+                "COMMAND": "servicenow",
+                "SUBCOMMAND": "updatedates",
+                "PARAMETERS": {
+                    "foo": "bar"
                 }
             }
         ]
@@ -988,12 +988,11 @@ Tests for the case where multiple notification transports (irc, email, etc) are 
         f.active_step = new_notify_step('failed')
         f.post_deploy_action = [
             {
-                "Update dates": {
-                    "COMMAND": "servicenow",
-                    "SUBCOMMAND": "updatedates",
-                    "PARAMETERS": {
-                        "foo": "bar"
-                    }
+                "NAME": "Update dates",
+                "COMMAND": "servicenow",
+                "SUBCOMMAND": "updatedates",
+                "PARAMETERS": {
+                    "foo": "bar"
                 }
             }
         ]

@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.5
-Release: 2%{?dist}
+Release: 3%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -54,6 +54,10 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Tue Nov 18 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.5-3
+- Ensure pre/post deploy stuff happens in defined order
+- Closes DE7411
+
 * Wed Nov  5 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.5-2
 - And now per-release FSM instances connect over SSL
 

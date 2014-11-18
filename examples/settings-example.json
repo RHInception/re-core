@@ -26,22 +26,23 @@
         "TOPIC": "notify.irc" ,
         "TARGET": ["#achannel", "someperson"]
     },
-    "PRE_DEPLOY_CHECK": [{
-        "Require Change Record": {
+    "PRE_DEPLOY_CHECK": [
+	{
+	    "NAME": "Require Change Record",
             "COMMAND": "servicenow",
-            "SUBCOMMAND": "getchangerecord",
-            "PARAMETERS": {
+	    "SUBCOMMAND": "getchangerecord",
+	    "PARAMETERS": {
                 "project": "myproject",
                 "some_filter": "to find the record"
-            },
-            "EXPECTATION": {
+	    },
+	    "EXPECTATION": {
                 "status": "completed",
                 "data": {
-                    "exists": true
+		    "exists": true
                 }
-            }
+	    }
         }
-    }],
+    ],
     "POST_DEPLOY_ACTION": [{
         "Update Change Record": {
             "COMMAND": "servicenow",
