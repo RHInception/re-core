@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.5
-Release: 3%{?dist}
+Release: 4%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -54,6 +54,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Wed Nov 19 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.5-4
+- Better handling for invalid/missing playbooks
+
 * Tue Nov 18 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.5-3
 - Ensure pre/post deploy stuff happens in defined order
 - Closes DE7411

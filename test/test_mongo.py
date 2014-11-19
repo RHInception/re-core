@@ -106,6 +106,10 @@ class TestMongo(TestCase):
         # Error result is {}
         assert mongo.lookup_playbook({}, playbook) == {}
 
+        # Invalid playbook id raises errors
+        with self.assertRaises(bson.errors.InvalidId):
+            mongo.lookup_playbook(db, '6')
+
     def test_initialize_state(self):
         """
         Make sure that creating the initial state uses proper data

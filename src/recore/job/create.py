@@ -26,6 +26,7 @@ reply_to.
 import recore.utils
 import recore.mongo
 import logging
+import bson.errors
 
 
 def release(ch, playbook, reply_to, dynamic):
@@ -51,19 +52,30 @@ instance with that document ID."""
         "new job submitted from rest for %s. Need to look it up "
         "first in mongo" % playbook)
     mongo_db = recore.mongo.database
-    playbook_exists = recore.mongo.lookup_playbook(mongo_db, playbook)
 
-    out.debug("Mongo query to get info on %s finished" % playbook)
-    notify.debug("looked up playbook: %s" % playbook)
+    try:
+        playbook_exists = recore.mongo.lookup_playbook(mongo_db, playbook)
 
-    if playbook_exists:
-        # Initialize state and include the dynamic items
-        id = str(recore.mongo.initialize_state(mongo_db, playbook, dynamic))
-        out.debug("State created for '%s' in mongo with id: %s" % (playbook, id))
-    else:
-        out.error("Playbook %s does not exists in mongo" % playbook)
+        out.debug("Mongo query to get info on %s finished" % playbook)
+        notify.debug("looked up playbook: %s" % playbook)
+
+        if playbook_exists:
+            # Initialize state and include the dynamic items
+            id = str(recore.mongo.initialize_state(mongo_db, playbook, dynamic))
+            out.debug("State created for '%s' in mongo with id: %s" % (playbook, id))
+            notify.debug("State created for '%s' in mongo with id: %s" % (playbook, id))
+        else:
+            out.error("Playbook %s does not exists in mongo" % playbook)
+            notify.error("Playbook %s does not exists in mongo" % playbook)
+            id = None
+    except bson.errors.InvalidId, bei:
+        out.error("Invalid ObjectID given for lookup: %s" % str(playbook))
+        notify.error("Invalid ObjectID given for lookup: %s" % str(playbook))
         id = None
-        return id
+    except Exception, e:
+        out.error("Unknown error while looking up playbook: %s" % str(e))
+        notify.error("Unknown error while looking up playbook: %s" % str(e))
+        id = None
 
     body = recore.utils.create_json_str({'id': id})
 
@@ -71,8 +83,14 @@ instance with that document ID."""
     ch.basic_publish(exchange='',
                      routing_key=reply_to,
                      body=body)
-    out.info("Emitted message to start new release for %s. Job id: %s" % (
-        playbook, str(id)))
-    notify.info("Emitted message to start new release for %s. Job id: %s" % (
-        playbook, str(id)))
+
+    if id is None:
+        out.error("Told rerest that we must abort the deployment")
+        notify.error("Told rerest that we must abort the deployment")
+    else:
+        out.info("Emitted message to start new release for %s. Job id: %s" % (
+            playbook, str(id)))
+        notify.info("Emitted message to start new release for %s. Job id: %s" % (
+            playbook, str(id)))
+
     return id

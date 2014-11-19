@@ -14,6 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import mock
+import bson.errors
 
 from . import TestCase, unittest
 
@@ -53,10 +54,21 @@ class TestJobCreate(TestCase):
         """
         Verify create.release works properly if a project does not exist
         """
-
         with mock.patch(
                 'recore.job.create.recore.mongo') as create.recore.mongo:
             create.recore.mongo.lookup_playbook = mock.MagicMock(
                 return_value={})
 
             assert create.release(channel, 'test', 'replyto', {}) is None
+
+    def test_invalid_pbid(self):
+        """
+        We don't leave re-rest hanging if an invalid pbid is given
+        """
+        with mock.patch(
+                'recore.job.create.recore.mongo') as create.recore.mongo:
+            create.recore.mongo.lookup_playbook = mock.MagicMock(
+                side_effect=bson.errors.InvalidId)
+
+            assert create.release(channel, '6', 'replyto', {}) is None
+            self.assertEqual(channel.basic_publish.call_args_list[0][1]['body'], '{"id": null}')
