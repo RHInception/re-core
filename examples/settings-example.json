@@ -27,24 +27,25 @@
         "TARGET": ["#achannel", "someperson"]
     },
     "PRE_DEPLOY_CHECK": [
-	{
-	    "NAME": "Require Change Record",
+        {
+            "NAME": "Require Change Record",
             "COMMAND": "servicenow",
-	    "SUBCOMMAND": "getchangerecord",
-	    "PARAMETERS": {
+            "SUBCOMMAND": "getchangerecord",
+            "PARAMETERS": {
                 "project": "myproject",
                 "some_filter": "to find the record"
-	    },
-	    "EXPECTATION": {
+            },
+            "EXPECTATION": {
                 "status": "completed",
                 "data": {
-		    "exists": true
+                    "exists": true
                 }
-	    }
+            }
         }
     ],
-    "POST_DEPLOY_ACTION": [{
-        "Update Change Record": {
+    "POST_DEPLOY_ACTION": [
+        {
+            "NAME": "Update Change Record",
             "COMMAND": "servicenow",
             "SUBCOMMAND": "updatechgrecord",
             "PARAMETERS": {
@@ -52,5 +53,5 @@
                 "some_filter": "to find the record"
             }
         }
-    }]
+    ]
 }
