@@ -20,20 +20,15 @@ import json
 import time
 import pika
 import recore.fsm
+import recore.contextfilter
 import recore.job.create
 import signal
+import threading
 
 
 MQ_CONF = {}
 CONF = {}
-out = logging.getLogger('recore.amqp')
-
-# Special Pika reconnection logging setup. Ripped from
-# https://pika.readthedocs.org/en/0.9.14/examples/asynchronous_consumer_example.html
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+out = logging.getLogger('recore')
 
 
 class WinternewtBusClient(object):  # pragma: no cover
@@ -76,7 +71,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         :rtype: pika.SelectConnection
 
         """
-        out.debug('Attempting to open channel with connect string: %s' % (
+        out.info('Attempting to open channel with connect string: %s' % (
             self._connection_string))
 
         try:
@@ -91,7 +86,7 @@ class WinternewtBusClient(object):  # pragma: no cover
 
     def close_connection(self):
         """This method closes the connection to RabbitMQ."""
-        LOGGER.info('Closing connection')
+        out.debug('Closing connection')
         self._connection.close()
 
     def add_on_connection_close_callback(self):
@@ -99,7 +94,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         when RabbitMQ closes the connection to the publisher unexpectedly.
 
         """
-        LOGGER.info('Adding connection close callback')
+        out.debug('Adding connection close callback')
         self._connection.add_on_close_callback(self.on_connection_closed)
 
     def on_connection_closed(self, connection, reply_code, reply_text):
@@ -116,8 +111,8 @@ class WinternewtBusClient(object):  # pragma: no cover
         if self._closing:
             self._connection.ioloop.stop()
         else:
-            LOGGER.warning('Connection closed, reopening in 5 seconds: (%s) %s',
-                           reply_code, reply_text)
+            out.warning('Connection closed, reopening in 5 seconds: (%s) %s',
+                        reply_code, reply_text)
             time.sleep(5)
             self.reconnect()
 
@@ -129,7 +124,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         :type unused_connection: pika.SelectConnection
 
         """
-        LOGGER.info('Connection opened')
+        out.info('AMQP Connection opened')
         self.add_on_connection_close_callback()
         self.open_channel()
 
@@ -155,7 +150,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         RabbitMQ unexpectedly closes the channel.
 
         """
-        LOGGER.info('Adding channel close callback')
+        out.debug('Adding channel close callback')
         self._channel.add_on_close_callback(self.on_channel_closed)
 
     def on_channel_closed(self, channel, reply_code, reply_text):
@@ -170,8 +165,8 @@ class WinternewtBusClient(object):  # pragma: no cover
         :param str reply_text: The text reason the channel was closed
 
         """
-        LOGGER.warning('Channel %i was closed: (%s) %s',
-                       channel, reply_code, reply_text)
+        out.warning('Channel %i was closed: (%s) %s',
+                    channel, reply_code, reply_text)
         self._connection.close()
 
     def on_channel_open(self, channel):
@@ -183,7 +178,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         :param pika.channel.Channel channel: The channel object
 
         """
-        LOGGER.info('Channel opened')
+        out.info('Channel opened')
         self._channel = channel
         self.add_on_channel_close_callback()
         self.setup_exchange(self.EXCHANGE)
@@ -194,7 +189,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         :param str|unicode exchange_name: The name of the exchange
 
         """
-        LOGGER.info('Exchange details: name: {name}, type: {type}, durability: {durability}'.format(
+        out.info('Exchange details: name: {name}, type: {type}, durability: {durability}'.format(
             name=exchange_name, type=self.EXCHANGE_TYPE, durability=True))
         self.setup_queue(self.QUEUE)
 
@@ -204,7 +199,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         :param str|unicode queue_name: The name of the queue
 
         """
-        LOGGER.info('Queue details: name: {name}, durability: {durability}'.format(
+        out.info('Queue details: name: {name}, durability: {durability}'.format(
             name=queue_name, durability=True))
 
         self.start_consuming()
@@ -215,8 +210,9 @@ class WinternewtBusClient(object):  # pragma: no cover
         on_consumer_cancelled will be invoked by pika.
 
         """
-        LOGGER.info('Adding consumer cancellation callback')
+        out.debug('Adding consumer cancellation callback')
         self._channel.add_on_cancel_callback(self.on_consumer_cancelled)
+        out.debug('Added consumer cancellation callback')
 
     def on_consumer_cancelled(self, method_frame):
         """Invoked by pika when RabbitMQ sends a Basic.Cancel for a consumer
@@ -225,8 +221,8 @@ class WinternewtBusClient(object):  # pragma: no cover
         :param pika.frame.Method method_frame: The Basic.Cancel frame
 
         """
-        LOGGER.info('Consumer was cancelled remotely, shutting down: %r',
-                    method_frame)
+        out.debug('Consumer was cancelled remotely, shutting down: %r',
+                  method_frame)
         if self._channel:
             self._channel.close()
 
@@ -237,7 +233,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         :param int delivery_tag: The delivery tag from the Basic.Deliver frame
 
         """
-        LOGGER.info('Acknowledging message %s', delivery_tag)
+        out.debug('Acknowledging message %s', delivery_tag)
         self._channel.basic_ack(delivery_tag)
 
     def on_message(self, unused_channel, basic_deliver, properties, body):
@@ -254,8 +250,8 @@ class WinternewtBusClient(object):  # pragma: no cover
         :param str|unicode body: The message body
 
         """
-        LOGGER.info('Received message # %s from %s: %s',
-                    basic_deliver.delivery_tag, properties.app_id, body)
+        out.debug('Received message # %s from %s: %s',
+                  basic_deliver.delivery_tag, properties.app_id, body)
         self.acknowledge_message(basic_deliver.delivery_tag)
         receive(unused_channel, basic_deliver, properties, body)
 
@@ -268,7 +264,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         :param pika.frame.Method unused_frame: The Basic.CancelOk frame
 
         """
-        LOGGER.info('RabbitMQ acknowledged the cancellation of the consumer')
+        out.debug('RabbitMQ acknowledged the cancellation of the consumer')
         self.close_channel()
 
     def stop_consuming(self):
@@ -277,7 +273,7 @@ class WinternewtBusClient(object):  # pragma: no cover
 
         """
         if self._channel:
-            LOGGER.info('Sending a Basic.Cancel RPC command to RabbitMQ')
+            out.debug('Sending a Basic.Cancel RPC command to RabbitMQ')
             self._channel.basic_cancel(self.on_cancelok, self._consumer_tag)
 
     def start_consuming(self):
@@ -290,7 +286,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         will invoke when a message is fully received.
 
         """
-        LOGGER.info('Issuing consumer related RPC commands')
+        out.debug('Issuing consumer related RPC commands')
         self.add_on_cancel_callback()
         self._consumer_tag = self._channel.basic_consume(self.on_message,
                                                          self.QUEUE)
@@ -300,7 +296,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         Channel.Close RPC command.
 
         """
-        LOGGER.info('Closing the channel')
+        out.debug('Closing the channel')
         self._channel.close()
 
     def open_channel(self):
@@ -309,7 +305,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         on_channel_open callback will be invoked by pika.
 
         """
-        LOGGER.info('Creating a new channel')
+        out.debug('Creating a new channel')
         self._connection.channel(on_open_callback=self.on_channel_open)
 
     def run(self):
@@ -331,11 +327,11 @@ class WinternewtBusClient(object):  # pragma: no cover
         the IOLoop will be buffered but not processed.
 
         """
-        LOGGER.info('Stopping')
+        out.debug('Stopping')
         self._closing = True
         self.stop_consuming()
         self._connection.ioloop.start()
-        LOGGER.info('Stopped')
+        out.info('Stopped AMQP')
 
     def send_notification(self, ch, routing_key, state_id, target, phase, message):
         """
@@ -396,7 +392,7 @@ class WinternewtBusClient(object):  # pragma: no cover
             ssl_options={'ssl_version': ssl.PROTOCOL_TLSv1}
         )
 
-        connection_string = 'Connection params set as amqp://%s:***@%s:%s%s%s' % (
+        connection_string = 'amqp://%s:***@%s:%s%s%s' % (
             mq_config['NAME'], mq_config['SERVER'],
             _port, mq_config['VHOST'], _ssl_qp)
 
@@ -439,15 +435,20 @@ def receive(ch, method, properties, body):
     """
     Callback for watching the FSM queue
     """
-    out = logging.getLogger('recore')
-    notify = logging.getLogger('recore.stdout')
     try:
         msg = json.loads(body)
+        logname = 'recore.playbook.' + str(msg['playbook_id'])
+        out = logging.getLogger(logname)
+        context_filter = recore.contextfilter.ContextFilterUnique(logname)
+        out.addFilter(context_filter)
+        context_filter.set_field('playbook_id', str(msg['playbook_id']))
+        context_filter.set_field('source_ip', msg.get('source_ip', ''))
+        context_filter.set_field('user_id', msg.get('user_id', ''))
     except ValueError:
         # Not JSON or not able to decode
-        out.debug("Unable to decode message. Rejecting: %s" % body)
+        out = logging.getLogger('recore')
+        out.error("Unable to decode message. Rejecting playbook deployment: %s" % body)
         reject(ch, method, False)
-        notify.info("Unable to decode message. Rejected.")
         return
     topic = method.routing_key
     out.debug("Message: %s" % msg)
@@ -457,11 +458,9 @@ def receive(ch, method, properties, body):
         try:
             # We need to get the name of the temporary
             # queue to respond back on.
-            notify.info("new job create for: %s" % msg['group'])
             out.info(
                 "New job requested, starting release "
                 "process for %s ..." % msg["group"])
-            notify.debug("Job message: %s" % msg)
             reply_to = properties.reply_to
 
             # We do this lookup even though we have the ID
@@ -471,27 +470,23 @@ def receive(ch, method, properties, body):
                 ch, msg['playbook_id'], reply_to,
                 msg.get('dynamic', {}))
         except KeyError, ke:
-            notify.info("Missing an expected key in message: %s" % ke)
             out.error("Missing an expected key in message: %s" % ke)
             # FIXME: eating errors can be dangerous! Double check this is OK.
             return
 
         if id:
-            # Skip this try/except until we work all the bugs out of the FSM
-            # try:
-            runner = recore.fsm.FSM(id)
+            recore.contextfilter.get_logger_filter(logname).set_field('deployment_id', str(id))
+            out.info("Launching new FSM for deployment")
+            runner = recore.fsm.FSM(msg['playbook_id'], id)
             runner.start()
             signal.signal(signal.SIGINT, sighandler)
-            # while runner.isAlive():
-            #     runner.join(0.3)
-            # except Exception, e:
-            # notify.error(str(e))
     else:
         out.warn("Unknown routing key %s. Doing nothing ...")
-        notify.info("IDK what this is: %s" % topic)
 
-    notify.info("end receive() routine")
-    out.debug("end receive() routine")
+    # Subtract one to account for the main thread
+    fsm_alive = threading.active_count() - 1
+
+    out.debug("End receive() routine - Running FSM threads: %s" % fsm_alive)
 
 
 def sighandler(signal, frame):
@@ -501,7 +496,8 @@ def sighandler(signal, frame):
     """
     import os
     import signal
-
+    out = logging.getLogger('recore')
+    out.critical('SIGINT received - killing all threads and then finishing the main process')
     os.killpg(os.getpgid(0), signal.SIGQUIT)
 
 

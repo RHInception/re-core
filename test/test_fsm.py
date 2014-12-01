@@ -30,6 +30,7 @@ import pymongo
 
 temp_queue = 'amqp-test_queue123'
 state_id = "123456abcdef"
+TEST_PBID = "547e13f7feb98272d8c0bc30"
 fsm__id = {'_id': ObjectId(state_id)}
 _active_step_string = "juicer:Promote"
 _active_step_dict = {
@@ -168,7 +169,7 @@ class TestFsm(TestCase):
             mocked_conn.channel.return_value = channel
             connection.return_value = mocked_conn
 
-            f = FSM(state_id)
+            f = FSM(TEST_PBID, state_id)
             (ch, conn) = f._connect_mq()
             self.assertEqual(f.reply_queue, temp_queue, msg="Expected %s for reply_queue, instead got %s" %
                              (temp_queue, f.reply_queue))
@@ -176,7 +177,7 @@ class TestFsm(TestCase):
     @mock.patch('recore.fsm.recore.amqp.send_notification')
     def test__setup(self, send_notification):
         """Setup works with an existing state document"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
         # An AMQP connection hasn't been made yet
 
         msg_started = {'status': 'completed', 'data': {'exists': True}}
@@ -217,7 +218,7 @@ class TestFsm(TestCase):
     @mock.patch('recore.fsm.recore.amqp.send_notification')
     def test__setup_failed_pre_deploy_check(self, send_notification, move_remaining, amqp_conf):
         """Setup fails with an existing state document and a failed pre-deploy check"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
         # An AMQP connection hasn't been made yet
         amqp_conf.get.return_value = PRE_DEPLOY_CONF['PRE_DEPLOY_CHECK']
         msg_started = {'status': 'completed', 'data': {'exists': False}}
@@ -268,7 +269,7 @@ class TestFsm(TestCase):
 
     def test__setup_lookup_state_none(self):
         """if lookup_state returns None then a LookupError is raised"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
 
         with mock.patch('recore.mongo.database') as (
                 mongo.database):
@@ -285,7 +286,7 @@ class TestFsm(TestCase):
 
     def test__setup_amqp_connect_fails(self):
         """_setup raises exception if amqp connection can't be made"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
         f._connect_mq = mock.MagicMock(side_effect=pika.exceptions.AMQPError("Couldn't connect to AMQP"))
 
         with mock.patch('recore.mongo.database') as (
@@ -305,7 +306,7 @@ class TestFsm(TestCase):
     @mock.patch('recore.fsm.recore.amqp.send_notification')
     def test__cleanup(self, send_notification, post_deploy):
         """Cleanup erases the needful"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
         f.ch = mock.Mock(pika.channel.Channel)
         f.conn = mock.Mock(pika.connection.Connection)
         f.reply_queue = temp_queue
@@ -341,7 +342,7 @@ class TestFsm(TestCase):
     def test__cleanup_post_failed(self, send_notification, post_deploy):
         """Cleanup marks release as failed if post deploy fails"""
         post_deploy.return_value = False
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
         f.ch = mock.Mock(pika.channel.Channel)
         f.conn = mock.Mock(pika.connection.Connection)
         f.reply_queue = temp_queue
@@ -376,7 +377,7 @@ class TestFsm(TestCase):
     @mock.patch('recore.fsm.recore.amqp.send_notification')
     def test__cleanup_failed(self, send_notification, post_deploy):
         """Cleanup fails if update_state raises"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
         f.ch = mock.Mock(pika.channel.Channel)
         f.conn = mock.Mock(pika.connection.Connection)
         f.failed = True  # Testing the fail notification too
@@ -399,7 +400,7 @@ class TestFsm(TestCase):
     def test__cleanup_failed_post_passes(self, send_notification, post_deploy):
         """Cleanup fails if update_state raises and post deploy passes"""
         post_deploy.return_value = True
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
         f.ch = mock.Mock(pika.channel.Channel)
         f.conn = mock.Mock(pika.connection.Connection)
         f.failed = True  # Testing the fail notification too
@@ -419,7 +420,7 @@ class TestFsm(TestCase):
 
     def test_update_state(self):
         """State updating does the needful"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
         f.state_coll = mock.MagicMock(spec=pymongo.collection.Collection,
                                       return_value=True)
 
@@ -440,7 +441,7 @@ class TestFsm(TestCase):
 
     def test_update_missing_state(self):
         """We notice if no document was found to update"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
         f.state_coll = mock.MagicMock(spec=pymongo.collection.Collection,
                                       return_value=True)
 
@@ -457,7 +458,7 @@ class TestFsm(TestCase):
 
     def test_update_state_mongo_failed(self):
         """We notice if mongo failed while updating state"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
         f.state_coll = mock.MagicMock(spec=pymongo.collection.Collection,
                                       return_value=True)
 
@@ -475,7 +476,7 @@ class TestFsm(TestCase):
 
     def test_dequeue_next_active_step(self):
         """The FSM can remove the next step and update Mongo with it"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
         f.active_step = _active_step_string
         f.active_sequence = new_active_sequence()
         f.executed = []
@@ -498,7 +499,7 @@ class TestFsm(TestCase):
 
     def test_move_active_to_completed(self):
         """FSM can update after completing a step"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
         f.active_step = _active_step_string
         f.active_sequence = new_active_sequence()
         f.active_sequence['completed_steps'] = []
@@ -525,7 +526,7 @@ class TestFsm(TestCase):
     @mock.patch.object(FSM, '_setup')
     def test__run(self, setup, dequeue, on_started):
         """The _run() method can send a proper message to a worker"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
         f.reply_queue = temp_queue
 
         f.group = "mock tests"
@@ -561,7 +562,7 @@ class TestFsm(TestCase):
     @mock.patch.object(FSM, '_setup')
     def test__run_finished(self, setup, cleanup):
         """When the FSM is out of steps it raises IndexError and calls _cleanup"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
         result = f._run()
         f._setup.assert_called_once_with()
         f.dequeue_next_active_step.assert_called_once_with()
@@ -586,7 +587,7 @@ class TestFsm(TestCase):
             #     'active_step': 'active_step',
             #     'remaining_steps': [],
             # }
-            f = FSM(state_id)
+            f = FSM(TEST_PBID, state_id)
             f.reply_queue = temp_queue
             f.group = 'GROUP'
 
@@ -616,7 +617,7 @@ class TestFsm(TestCase):
     @mock.patch.object(FSM, 'move_remaining_to_skipped')
     def test_on_ended(self, run, move_completed, move_to_skipped, notify):
         """Once a step ends the FSM checks if it completed or else"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
 
         consume_completed = [
             mock.Mock(name="method_mocked"),
@@ -658,7 +659,7 @@ class TestFsm(TestCase):
         """Per-step notifications work when starting a step
 
 Tests for the case where only one notification transport (irc, email, etc) is defined"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
 
         msg_started = {'status': 'started'}
 
@@ -701,7 +702,7 @@ Tests for the case where only one notification transport (irc, email, etc) is de
         """Per-step notifications work when a step is completed
 
 Tests for the case where only one notification transport (irc, email, etc) is defined"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
 
         msg_completed = {'status': 'completed'}
 
@@ -743,7 +744,7 @@ Tests for the case where only one notification transport (irc, email, etc) is de
         """Per-step notifications work when a step fails
 
 Tests for the case where only one notification transport (irc, email, etc) is defined"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
 
         msg_failed = {'status': 'failed'}
 
@@ -785,7 +786,7 @@ Tests for the case where only one notification transport (irc, email, etc) is de
     @mock.patch('recore.fsm.recore.amqp.send_notification')
     def test_step_notification_started_no_notifications(self, send_notification, on_started, dequeue_step, setup):
         """Per-step notifications don't happen if no notifications are defined"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
 
         msg_started = {'status': 'started'}
 
@@ -826,7 +827,7 @@ Tests for the case where only one notification transport (irc, email, etc) is de
 
 Tests for the case where multiple notification transports (irc, email, etc) are defined"""
 
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
 
         msg_started = {'status': 'started'}
 
@@ -877,7 +878,7 @@ Tests for the case where multiple notification transports (irc, email, etc) are 
     @mock.patch('recore.fsm.recore.amqp.send_notification')
     def test_step_notification_failed_before_started_received(self, send_notification, move_active, run, skipped):
         """Per-step notifications happen if a step fails when the worker attempts to start it"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
 
         msg_failed = {'status': 'failed'}
 
@@ -919,7 +920,7 @@ Tests for the case where multiple notification transports (irc, email, etc) are 
     @mock.patch('recore.fsm.recore.amqp.send_notification')
     def test_post_deploy_passed(self, send_notification, move_active, run, skipped):
         """Post-deploy action passes"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
 
         msg_completed = {'status': 'completed'}
 
@@ -963,7 +964,7 @@ Tests for the case where multiple notification transports (irc, email, etc) are 
     @mock.patch('recore.fsm.recore.amqp.send_notification')
     def test_post_deploy_failed(self, send_notification, move_active, run, skipped):
         """Post-deploy action fails"""
-        f = FSM(state_id)
+        f = FSM(TEST_PBID, state_id)
 
         msg_failed = {'status': 'failed', 'data': {'reason': 'it broke'}}
 

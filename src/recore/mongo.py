@@ -22,6 +22,7 @@ import urllib
 import datetime
 import logging
 import recore.constants
+import recore.contextfilter
 import recore.utils
 
 connection = None
@@ -40,19 +41,23 @@ def init_mongo(db):
         db['SSL'])
     recore.mongo.connection = c
     recore.mongo.database = d
+    out = logging.getLogger('recore')
+    out.info("opened mongodb connection")
 
 
 def connect(host, port, user, password, db, ssl):
     # First, escape the parameters
+    out = logging.getLogger('recore')
     (n, p) = escape_credentials(user, password)
     connect_string = "mongodb://%s:%s@%s:%s/%s?ssl=%s" % (
         n, p, host, port, db, ssl)
     cs_clean = "mongodb://%s:******@%s:%s/%s?ssl=%s" % (
         n, host, port, db, ssl)
-    out = logging.getLogger('recore')
+    out.info("Initializing mongo db connection with connect string: %s" %
+             cs_clean)
+
     connection = MongoClient(connect_string)
     db = connection[db]
-    out.debug("Opened: %s" % cs_clean)
     out.info("Connection to the database succeeded")
     return (connection, db)
 
@@ -62,7 +67,7 @@ def lookup_playbook(d, pbid):
 for a document with the given `pbid`. `search_result` is either a hash
 or `None` if no matches were found.
     """
-    out = logging.getLogger('recore')
+    out = logging.getLogger('recore.playbook.' + str(pbid))
     try:
         # TODO: make this a config var
         groups = d['playbooks']
@@ -83,15 +88,17 @@ or `None` if no matches were found.
         return {}
 
 
-def lookup_state(c_id):
+def lookup_state(c_id, pbid):
     """`c_id` is a correlation ID corresponding to the ObjectID value in
 MongoDB.
+
+pbid - the playbook id used for logging purposes
     """
     # using the recore.mongo.database database, create a
     # pymongo.collection.Collection object pointing at the 'state'
     # collection
     states = database['state']
-    out = logging.getLogger('recore.stdout')
+    out = logging.getLogger('recore.playbook.' + str(pbid))
     out.debug("Looking up state for %s" % ObjectId(str(c_id)))
     # findOne state document with _id of `c_id`. If a document is
     # found, returns a hash, if no document is found, returns None
@@ -111,8 +118,8 @@ def initialize_state(d, pbid, dynamic={}):
 #. Update the record with items specific to this playbook
 #. Insert the new state record
 #. Return the ID"""
-
-    out = logging.getLogger('recore')
+    logname = 'recore.playbook.' + str(pbid)
+    out = logging.getLogger(logname)
 
     # Look up the to-release playbook
     _playbook = lookup_playbook(d, pbid)
@@ -140,6 +147,8 @@ def initialize_state(d, pbid, dynamic={}):
 
     try:
         id = d['state'].insert(state0)
+        filter = recore.contextfilter.get_logger_filter(logname)
+        filter.set_field('deployment_id', str(id))
         out.info("Added new state record with id: %s" % str(id))
         out.debug("New state record: %s" % state0)
     except pymongo.errors.PyMongoError, pmex:

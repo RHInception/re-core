@@ -8,8 +8,8 @@
 
 Name: re-core
 Summary: FSM of the Inception Release Engine
-Version: 0.0.5
-Release: 4%{?dist}
+Version: 0.0.6
+Release: 1%{?Dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -22,6 +22,7 @@ BuildRequires: python-setuptools
 Requires: python-pymongo
 Requires: python-pika
 Requires: python-argparse
+Requires: pytz
 # BuildRequires: python-nose
 # %{?el6:BuildRequires: python-unittest2}
 
@@ -54,6 +55,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Mon Dec  1 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.6-1
+- Now with consistent logging format
+
 * Wed Nov 19 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.5-4
 - Better handling for invalid/missing playbooks
 

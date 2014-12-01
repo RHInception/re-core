@@ -200,7 +200,7 @@ class TestAMQP(TestCase):
         handled properly
         """
         group = 'testgroup'
-        body = '{"bad": "data"}'
+        body = '{"bad": "data", "playbook_id": "foo", "source_ip": "bar", "user_id": "joeuser"}'
         release_id = 12345
 
         method = mock.MagicMock(routing_key='job.create')
@@ -228,7 +228,8 @@ class TestAMQP(TestCase):
         """
         group = 'testgroup'
         release_id = 12345
-        body = {"group": group, "status": "completed"}
+        body = {"group": group, "status": "completed",
+                "playbook_id": "foo", "source_ip": "bar", "user_id": "joeuser"}
         method = mock.MagicMock(routing_key='unknown')
 
         with mock.patch('recore.job.create') as amqp.recore.job.create:

@@ -19,6 +19,8 @@ import json
 from datetime import datetime as dt
 import recore.mongo
 import recore.amqp
+import recore.constants
+import recore.contextfilter
 import logging
 import os.path
 import threading
@@ -34,7 +36,7 @@ class FSM(threading.Thread):
     """The re-core Finite State Machine to oversee the execution of
 a playbooks's release steps."""
 
-    def __init__(self, state_id, *args, **kwargs):
+    def __init__(self, playbook_id, state_id, *args, **kwargs):
         """Not really overriding the threading init method. Just describing
         the parameters we expect to receive when initialized and
         setting up logging.
@@ -42,11 +44,12 @@ a playbooks's release steps."""
         `state_id` - MongoDB ObjectID of the document holding release steps
         """
         super(FSM, self).__init__(*args, **kwargs)
-        self.app_logger = fsm_logger(state_id)
+        self.app_logger = fsm_logger(playbook_id, state_id)
         # properties for later when we run() like the wind
         self.ch = None
         self.conn = None
         self.state_id = state_id
+        self.playbook_id = playbook_id
         self._id = {'_id': ObjectId(self.state_id)}
         self.initialized = False
         self.state = {}
@@ -563,7 +566,7 @@ Returns `None` if no action was required. Else, returns `True`
 
     def _setup(self):
         try:
-            self.state.update(recore.mongo.lookup_state(self.state_id))
+            self.state.update(recore.mongo.lookup_state(self.state_id, self.playbook_id))
         except TypeError:
             self.app_logger.error("The given state document could not be located: %s" % self.state_id)
             raise LookupError("The given state document could not be located: %s" % self.state_id)
@@ -764,7 +767,7 @@ preparing to finish a deployment."""
         return True
 
 
-def fsm_logger(state_id):
+def fsm_logger(playbook_id, state_id):
         """Initialize the FSM Loggers
 
 By default, the FSM will log to the console and a single
@@ -791,29 +794,27 @@ Params:
 
 .. todo:: Configure log levels via settings file
 """
-        _log_id = 'FSM-%s' % state_id
-        _level = logging.INFO
+        # re-use the pre-deployment 'recore.playbook.PBID' logger
+        # filter because it has all the field information already
+        pb_logger = 'recore.playbook.' + playbook_id
+        filter = recore.contextfilter.get_logger_filter(pb_logger)
 
-        app_logger = logging.getLogger(_log_id)
-        app_logger.setLevel(_level)
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s:%(funcName)s:%(lineno)d - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        handler.setLevel(_level)
-        app_logger.addHandler(handler)
+        # This is our actual logger object
+        deploy_logger = logging.getLogger(pb_logger + '.deployment')
+        deploy_logger.addFilter(filter)
+        # Log at the same threshold that the main application logs at
+        deploy_logger.setLevel(logging.getLogger('recore').getEffectiveLevel())
 
-        # Initialize the per-release logging directory
         try:
-            release_log = os.path.join(RELEASE_LOG_DIR, "%s.log" % _log_id)
+            # Initialize the per-release logging directory
+            release_log = os.path.join(RELEASE_LOG_DIR, "FSM-%s.log" % state_id)
             release_handler = logging.FileHandler(os.path.realpath(release_log))
-            release_handler.setFormatter(formatter)
-            release_handler.setLevel(_level)
-            app_logger.addHandler(release_handler)
+            release_handler.setFormatter(recore.constants.LOG_FORMATTER)
+            deploy_logger.addHandler(release_handler)
         except IOError:
             raise IOError("FSM could not write to the per-release log directory: %s" % (
                 str(RELEASE_LOG_DIR)))
         except:
             pass
 
-        return app_logger
+        return deploy_logger

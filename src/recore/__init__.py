@@ -15,6 +15,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import recore.utils
+import recore.contextfilter
+import recore.constants
 import recore.fsm
 import logging
 import os.path
@@ -24,28 +26,39 @@ import sys
 import pika.exceptions
 import pika.connection
 
-RE_COMPONENT = "RE-CORE"
-
 
 def start_logging(log_file, log_level):
-    # First the file logging
-    output = logging.getLogger('recore')
-    output.setLevel(logging.getLevelName(log_level))
-    log_handler = logging.FileHandler(log_file)
-    log_handler.setLevel(logging.getLevelName(log_level))
-    log_handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(module)s:%(funcName)s:%(lineno)d - %(levelname)s - %(message)s'))
-    output.addHandler(log_handler)
-    output.debug("initialized logger")
+    # The context filter accumulates information over it's lifetime
+    context_filter = recore.contextfilter.ContextFilter()
 
-    # And now the stdout logging
-    out2 = logging.getLogger('recore.stdout')
-    out2.setLevel(logging.getLevelName(log_level))
-    lh2 = logging.StreamHandler(sys.stdout)
-    lh2.setFormatter(logging.Formatter(
-        '%(asctime)s - %(module)s:%(funcName)s:%(lineno)d - %(levelname)s - %(message)s'))
-    out2.addHandler(lh2)
-    out2.debug("initialized stdout logger")
+    # Create logger obj and set threshold
+    recore_log = logging.getLogger('recore')
+    # The core logger allows all levels of messages to flow into it
+    # (logging.DEBUG)
+    recore_log.setLevel(logging.DEBUG)
+
+    # Create the default filter, this won't fill in any fields, but it
+    # will let us use the same log message string
+    recore_filter = recore.contextfilter.ContextFilter('recore')
+    recore_log.addFilter(recore_filter)
+
+    # Create the file log handler and set it's formatting string. The
+    # file handler usually has a higher threshold than the logger
+    # object. In this way DEBUG information won't appear in the file
+    recore_file_handler = logging.FileHandler(log_file)
+    recore_file_handler.setFormatter(recore.constants.LOG_FORMATTER)
+    recore_file_handler.setLevel(log_level)
+    recore_log.addHandler(recore_file_handler)
+
+    # The stream handler logs events to the console (stdout/err). It's
+    # final threshold is set to WARN so that process/flow information
+    # isn't displayed, only warnings/errors/critical problems.
+    recore_stream_handler = logging.StreamHandler()
+    recore_stream_handler.setFormatter(recore.constants.LOG_FORMATTER)
+    recore_stream_handler.setLevel(logging.INFO)
+    recore_log.addHandler(recore_stream_handler)
+    recore_log.info("initialized core logging")
+    recore_stream_handler.setLevel(logging.WARN)
 
 
 def parse_config(config_path):
@@ -54,7 +67,7 @@ def parse_config(config_path):
         config = recore.utils.parse_config_file(config_path)
         start_logging(config.get(
             'LOGFILE', 'recore.log'), config.get('LOGLEVEL', 'INFO'))
-        notify = logging.getLogger('recore.stdout')
+        notify = logging.getLogger('recore')
         notify.debug('Parsed configuration file')
 
         # Initialize the FSM logger, only if RELEASE_LOG_DIR isn't
@@ -84,20 +97,20 @@ def main(args):  # pragma: no cover
 
     *Note*: Not covered for unittests as it glues tested code together.
     """
-    pika.connection.PRODUCT = RE_COMPONENT
+    pika.connection.PRODUCT = recore.constants.AMQP_COMPONENT
     import pymongo.errors
 
     config = parse_config(args.config)
 
     out = logging.getLogger('recore')
-    notify = logging.getLogger('recore.stdout')
+    notify = logging.getLogger('recore')
     try:
         recore.mongo.init_mongo(config['DB'])
     except pymongo.errors.ConnectionFailure, cfe:
         out.fatal("Connection failiure to Mongo: %s. Exiting ..." % cfe)
         notify.fatal("Connection failiure to Mongo: %s. Exiting ..." % cfe)
         raise SystemExit(1)
-    except pymongo.errors.PyMongoError:
+    except pymongo.errors.PyMongoError, cfe:
         out.fatal("Unknown failiure with Mongo: %s. Exiting ..." % cfe)
         notify.fatal("Unknown failiure with Mongo: %s. Exiting ..." % cfe)
         raise SystemExit(1)
@@ -124,9 +137,6 @@ def main(args):  # pragma: no cover
         notify.info("Keyboard Interrupt sent.")
         connection.stop()
         raise SystemExit(0)
-
-    out.info('FSM fully initialized')
-    notify.info('FSM fully initialized')
 
 ######################################################################
 # pika spews messages about logging handlers by default. So we're just

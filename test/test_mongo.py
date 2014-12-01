@@ -110,7 +110,8 @@ class TestMongo(TestCase):
         with self.assertRaises(bson.errors.InvalidId):
             mongo.lookup_playbook(db, '6')
 
-    def test_initialize_state(self):
+    @mock.patch('recore.contextfilter.get_logger_filter')
+    def test_initialize_state(self, logger_filter):
         """
         Make sure that creating the initial state uses proper data
         """
