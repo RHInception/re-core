@@ -40,3 +40,4 @@ recore.log
 htmlcov
 MANIFEST
 re-coreenv/
+*.log

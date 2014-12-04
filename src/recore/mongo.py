@@ -41,8 +41,6 @@ def init_mongo(db):
         db['SSL'])
     recore.mongo.connection = c
     recore.mongo.database = d
-    out = logging.getLogger('recore')
-    out.info("opened mongodb connection")
 
 
 def connect(host, port, user, password, db, ssl):
@@ -58,7 +56,6 @@ def connect(host, port, user, password, db, ssl):
 
     connection = MongoClient(connect_string)
     db = connection[db]
-    out.info("Connection to the database succeeded")
     return (connection, db)
 
 
@@ -149,7 +146,7 @@ def initialize_state(d, pbid, dynamic={}):
         id = d['state'].insert(state0)
         filter = recore.contextfilter.get_logger_filter(logname)
         filter.set_field('deployment_id', str(id))
-        out.info("Added new state record with id: %s" % str(id))
+        out.debug("Added new state record with id: %s" % str(id))
         out.debug("New state record: %s" % state0)
     except pymongo.errors.PyMongoError, pmex:
         out.error(

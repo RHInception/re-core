@@ -24,6 +24,7 @@ reply_to.
 """
 
 import recore.utils
+import json
 import recore.mongo
 import recore.contextfilter
 import logging
@@ -69,12 +70,12 @@ instance with that document ID."""
         out.error("Unknown error while looking up playbook: %s" % str(e))
         id = None
 
-    body = recore.utils.create_json_str({'id': id})
+    body = {'id': id}
 
     out.debug("Sending to routing key %s: %s" % (reply_to, body))
     ch.basic_publish(exchange='',
                      routing_key=reply_to,
-                     body=body)
+                     body=json.dumps(body))
 
     if id is None:
         out.error("Told rerest that we must abort the deployment")

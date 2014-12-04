@@ -32,6 +32,40 @@ import ssl
 RELEASE_LOG_DIR = None
 
 
+# These method loggers are for EXTREME debugging purposes only
+detailed_debugging = False
+
+if detailed_debugging:
+    dd_level = logging.DEBUG
+else:
+    dd_level = logging.NOTSET
+
+method_logger = logging.getLogger("methodlogger")
+method_logger.setLevel(dd_level)
+method_logger_file_handler = logging.FileHandler("/tmp/fsm-debug.log")
+method_logger_file_handler.setLevel(dd_level)
+method_logger.addHandler(method_logger_file_handler)
+
+method_logger_names = logging.getLogger("methodloggernames")
+method_logger_names.setLevel(dd_level)
+method_logger_file_handler_names = logging.FileHandler("/tmp/fsm-debug-names.log")
+method_logger_file_handler_names.setLevel(dd_level)
+method_logger_names.addHandler(method_logger_file_handler_names)
+
+
+def method_wrapper(f):
+    def decorator(*args, **kwargs):
+        o = logging.getLogger('methodlogger')
+        n = logging.getLogger('methodloggernames')
+        o.debug("Entered: %s(%s, %s)" % (
+            str(f.func_name),
+            str(args[1:]),
+            str(kwargs)))
+        n.debug(f.func_name)
+        return f(*args, **kwargs)
+    return decorator
+
+
 class FSM(threading.Thread):
     """The re-core Finite State Machine to oversee the execution of
 a playbooks's release steps."""
@@ -50,6 +84,8 @@ a playbooks's release steps."""
         self.conn = None
         self.state_id = state_id
         self.playbook_id = playbook_id
+        _pb_logger = 'recore.playbook.' + playbook_id
+        self.filter = recore.contextfilter.get_logger_filter(_pb_logger)
         self._id = {'_id': ObjectId(self.state_id)}
         self.initialized = False
         self.state = {}
@@ -57,6 +93,7 @@ a playbooks's release steps."""
         self.reply_queue = None
         self.failed = False
 
+    @method_wrapper
     def run(self):  # pragma: no cover
         try:
             self._run()
@@ -64,9 +101,15 @@ a playbooks's release steps."""
             # Don't know why, but pika likes to raise this exception
             # when we intentionally close a connection...
             self.app_logger.debug("Closed AMQP connection")
-        self.app_logger.info("Terminating")
+
+        if self.failed:
+            self.app_logger.error("Terminating this FSM thread - deployment failed")
+        else:
+            self.app_logger.info("Terminating this FSM thread - deployment successful")
+
         return True
 
+    @method_wrapper
     def _run(self):
         self._setup()
         try:
@@ -82,25 +125,28 @@ a playbooks's release steps."""
             self._cleanup()
             return True
 
+        self.filter.set_field("deploy_phase", "execution")
         # Parse the step into a message for the worker queue
         props = pika.spec.BasicProperties()
         props.correlation_id = self.state_id
         props.reply_to = self.reply_queue
         params = {}
         notify = {}
-        self.app_logger.info("Pre-processing next step: %s" % str(self.active_step))
+        self.app_logger.debug("Pre-processing next step: %s" % str(self.active_step))
         if type(self.active_step) == str or \
            type(self.active_step) == unicode:
-            self.app_logger.info("Next step is a string. Split it and route it")
+            self.app_logger.debug("Next step is a string. Split it and route it")
             (worker_queue, sep, subcommand) = self.active_step.partition(':')
         else:
-            self.app_logger.info("Next step is a %s. We have some work to do..." % (
-                type(self.active_step)))
-            self.app_logger.info(self.active_step)
+            # It's a dictionary
+            self.app_logger.debug("Next step has parameters to parse: %s" % self.active_step)
             _step_key = self.active_step.keys()[0]
             (worker_queue, sep, subcommand) = _step_key.partition(':')
             params = self.active_step[_step_key]
             notify.update(self.active_step[_step_key].get('notify', {}))
+
+        this_step_name = "{CMD}:{SUB}".format(CMD=worker_queue, SUB=subcommand)
+        self.filter.set_field("active_step", this_step_name)
 
         _params = {
             'command': worker_queue,
@@ -125,22 +171,20 @@ a playbooks's release steps."""
                               properties=props)
 
         self.notify_step()
+        self.app_logger.info("Dispatched job details for step %s" % this_step_name)
+        self.app_logger.debug("Job details: %s" % msg)
 
-        self.app_logger.info("Sent plugin (%s) new job details" % plugin_queue)
-        self.app_logger.info("Details: %s" % (
-            str(msg)))
-        # Begin consuming from reply_queue
-        self.app_logger.debug("Waiting for plugin to update us")
-
+        # Begin consuming from reply_queue. Wait for worker to update us
         for method, properties, body in self.ch.consume(self.reply_queue):
             self.ch.basic_ack(method.delivery_tag)
             self.ch.cancel()
             self.on_started(self.ch, method, properties, body)
 
+    @method_wrapper
     def on_started(self, channel, method_frame, header_frame, body):
-        self.app_logger.debug("Plugin responded with: %s" % body)
-
         _body = json.loads(body)
+        self.app_logger.debug("Worker responded with: %s" % _body)
+
         if _body['status'] != 'started':
             # Let's get off this train. The plugin aborted and we don't
             # want to hang around any more. Leave the currently active
@@ -149,13 +193,12 @@ a playbooks's release steps."""
             # current "errored/failed" message to it.
             self.app_logger.error(
                 "Received failure/error message from the worker: %s" % (
-                    body))
+                    _body))
             self.failed = True
             self.on_ended(channel, method_frame, header_frame, body)
         else:
-            self.app_logger.info("Plugin 'started' update received. "
-                                 "Waiting for next state update")
-            self.app_logger.debug("Waiting for completed/errored message")
+            self.app_logger.debug("Worker 'started' update received. "
+                                  "Waiting for next state update")
 
             # Consume from reply_queue, wait for completed/errored message
             for method, properties, body in self.ch.consume(self.reply_queue):
@@ -163,29 +206,29 @@ a playbooks's release steps."""
                 self.ch.cancel()
                 self.on_ended(self.ch, method, properties, body)
 
+    @method_wrapper
     def on_ended(self, channel, method_frame, header_frame, body):
-        self.app_logger.debug("Got completed/errored message back from the worker")
-
         msg = json.loads(body)
-        self.app_logger.debug(json.dumps(msg))
+        self.app_logger.debug("Got completed/errored message back from the worker: %s" % msg)
         self.notify_step(msg)
 
         # Remove from active step, push onto completed steps
         # - Reflect in MongoDB
         if msg['status'] == 'completed':
-            self.app_logger.info("State update received: Job finished without error")
+            self.app_logger.info("Completion update received from worker")
             self.move_active_to_completed()
             self._run()
         else:
-            self.app_logger.error("State update received: Job finished with error(s)")
+            self.app_logger.error("Failure/error update received from worker")
             self.failed = True
             self.move_remaining_to_skipped()
 
+    @method_wrapper
     def move_active_to_completed(self):
         finished_step = self.active_step
         self.active_sequence['completed_steps'].append(finished_step)
         self.active_step = None
-
+        self.filter.set_field("active_step", "")
         _update_state = {
             '$set': {
                 'active_step': self.active_step,
@@ -194,6 +237,7 @@ a playbooks's release steps."""
         }
         self.update_state(_update_state)
 
+    @method_wrapper
     def move_remaining_to_skipped(self):
         """Most likely an error message has just arrived from a worker.
 
@@ -201,6 +245,7 @@ Record the failed/skipped items so they can be updated in the db. Then
 update self by emptying out anything active or remaining. Reflect this
 in the DB.
         """
+        self.filter.set_field('deploy_phase', 'error-state-cleanup')
         failed_step = self.active_step
         failed_sequence = self.active_sequence
         skipped_sequences = self.execution
@@ -226,9 +271,9 @@ in the DB.
         # Accept our fate and admit we are a failure (so we can log
         # this properly in the db)
         self.failed = True
-        self.app_logger.debug("Recorded failed state in this FSM instance")
-        self._cleanup()
+        self.app_logger.warn("Recorded failed state in this FSM instance")
 
+    @method_wrapper
     def dequeue_next_active_step(self, to='active_step'):
         """Take the next remaining step/sequence off the queue and move it
         into active step/sequence.
@@ -276,6 +321,7 @@ in the DB.
         required concurrency.
 
         """
+        self.filter.set_field('deploy_phase', 'execution')
         try:
             # Use the .get() so it's easy to continue if a step failed
             self.active_step = self.active_sequence.get('steps', []).pop(0)
@@ -343,6 +389,7 @@ in the DB.
         }
         self.update_state(_update_state)
 
+    @method_wrapper
     def notify(self, phase, msg=None):
         """Send some notifications. Allowed values for `phase` include:
 'started', 'completed', and 'failed'.
@@ -356,7 +403,7 @@ The optional `msg` parameter allows you to provide a custom message.
             if msg is not None:
                 _msg = msg
             else:
-                _msg = "Release %s %s. See %s." % (
+                _msg = "Release %s %s. See %s" % (
                     self.state_id,
                     str(phase),
                     taboot_url)
@@ -372,6 +419,7 @@ The optional `msg` parameter allows you to provide a custom message.
         else:
             return False
 
+    @method_wrapper
     def notify_step(self, response=None):
         """A step may have a user-defined notification. If one is set this
         method will send the proper notification out for processing.
@@ -398,6 +446,9 @@ Returns `None` if no action was required. Else, returns `True`
         if response is None:
             _phase = 'started'
             _msg = "Started step: %s" % str(self.active_step)
+        elif response.get('status', None) == 'started':
+            _phase = 'started'
+            _msg = "Started step: %s" % str(self.active_step)
         elif response.get('status', None) == 'completed':
             _phase = 'completed'
             _msg = "Completed step: %s with status: %s" % (
@@ -412,7 +463,7 @@ Returns `None` if no action was required. Else, returns `True`
             self.app_logger.error("Invalid phase given: %s" % str(response['status']))
             raise TypeError("Invalid 'status' parameter for step notification: %s" % str(response['status']))
 
-        self.app_logger.info("Identified current phase: %s" % _phase)
+        self.app_logger.debug("Identified current phase: %s" % _phase)
 
         # Is there a notification defined for this phase?
         _notif = self.active_step[_step_key]['notify'].get(_phase, None)
@@ -441,6 +492,7 @@ Returns `None` if no action was required. Else, returns `True`
             ", ".join(transports)))
         return True
 
+    @method_wrapper
     def update_state(self, new_state):
         """
         Update the state document in Mongo for this release
@@ -460,10 +512,14 @@ Returns `None` if no action was required. Else, returns `True`
                 "Propagating PyMongo error: %s" % (new_state, pmex))
             raise pmex
 
+    @method_wrapper
     def _cleanup(self):
+        self.app_logger.debug("Entered cleanup routine")
         if not self._post_deploy_action():
+            self.filter.set_field("deploy_phase", "")
             self.failed = True
 
+        self.filter.set_field("deploy_phase", "cleanup")
         # Send ending notification
         status = 'failed'
         if not self.failed:
@@ -471,10 +527,9 @@ Returns `None` if no action was required. Else, returns `True`
 
         self.notify(status)
 
+        self.app_logger.debug("Deleting temp queue (%s) and closing the connection" % self.reply_queue)
         self.ch.queue_delete(queue=self.reply_queue)
-        self.app_logger.debug("Deleted AMQP queue: %s" % self.reply_queue)
         self.conn.close()
-        self.app_logger.debug("Closed AMQP connection")
 
         _update_state = {
             '$set': {
@@ -492,10 +547,11 @@ Returns `None` if no action was required. Else, returns `True`
             raise e
         else:
             self.app_logger.debug("Cleaned up all leftovers. We should terminate next")
+        self.app_logger.debug("Finished cleanup routine")
 
+    @method_wrapper
     def _connect_mq(self):
-        out = logging.getLogger('recore')
-        out.info("Opening AMQP connection for release with id: %s" % self.state_id)
+        self.app_logger.debug("Opening AMQP connection for release with id: %s" % self.state_id)
 
         # TODO: Use the same bus client as core
         mq = recore.amqp.MQ_CONF
@@ -503,21 +559,20 @@ Returns `None` if no action was required. Else, returns `True`
         (self._params, self._connection_string) = self._parse_connect_params(mq)
 
         connection = pika.BlockingConnection(self._params)
-        self.app_logger.debug("Connection to MQ opened.")
-        out.info("Connected to AMQP with connection params set as %s" %
-                 self._connection_string)
+        self.app_logger.info("Connected to AMQP with connection params set as %s" %
+                             self._connection_string)
         channel = connection.channel()
-        self.app_logger.debug("MQ channel opened. Declaring exchange ...")
+        self.app_logger.debug("Declaring exchange and temp queue")
         channel.exchange_declare(exchange=mq['EXCHANGE'],
                                  durable=True,
                                  exchange_type='topic')
-        self.app_logger.debug("Exchange declared.")
         result = channel.queue_declare(queue='',
                                        exclusive=True,
                                        durable=False)
         self.reply_queue = result.method.queue
         return (channel, connection)
 
+    @method_wrapper
     def _parse_connect_params(self, mq_config):
         """Parse the given dictionary ``mq_config``. Return connection params,
         and a properly formatted AMQP connection string with the
@@ -558,13 +613,19 @@ Returns `None` if no action was required. Else, returns `True`
             ssl_options={'ssl_version': ssl.PROTOCOL_TLSv1}
         )
 
-        connection_string = 'Connection params set as amqp://%s:***@%s:%s%s%s' % (
+        connection_string = 'amqp://%s:***@%s:%s%s%s' % (
             mq_config['NAME'], mq_config['SERVER'],
             _port, mq_config['VHOST'], _ssl_qp)
 
         return (con_params, connection_string)
 
+    @method_wrapper
     def _setup(self):
+        if not self.initialized:
+            self.filter.set_field('deploy_phase', 'initialization')
+        else:
+            self.filter.set_field('deploy_phase', 'execution')
+
         try:
             self.state.update(recore.mongo.lookup_state(self.state_id, self.playbook_id))
         except TypeError:
@@ -589,13 +650,21 @@ Returns `None` if no action was required. Else, returns `True`
         self.state_coll = self.db['state']
 
         if not self.initialized:
+            self.app_logger.info("Initializing FSM")
             # FSM just spun up, do those misc. one-time things
+            self.filter.set_field("deploy_phase", "initialization")
+            self.app_logger.info("Running first time tasks as part of initialization")
             if not self._first_run():
+                self.filter.set_field('deploy_phase', 'error-state-cleanup')
+                self.app_logger.error("A first-time task or pre-deploy check failed during FSM initialization")
                 # The one-time things failed. STAHP EVERYTHING
                 self.move_remaining_to_skipped()
             else:
                 self.initialized = True
+                self.app_logger.info("FSM initialized")
+                self.filter.set_field('deploy_phase', 'execution')
 
+    @method_wrapper
     def _first_run(self):
         """Things to do only on initialization.
 
@@ -631,21 +700,24 @@ worker.
 
         # Run the pre-deploy check. It will give us back False as soon
         # as the first failure is detected.
+        self.filter.set_field("deploy_phase", "pre-deploy-check")
+        self.app_logger.info("Running pre-deploy checks")
         if not self._pre_deploy_check():
+            self.app_logger.warn("One of the pre-deploy checks failed")
+            self.filter.set_field("deploy_phase", 'error-state-cleanup')
             return False
 
         ##############################################################
         # We made it through the first-run steps without a problem
+        self.filter.set_field("deploy_phase", "")
         return True
 
+    @method_wrapper
     def _pre_deploy_check(self):
         """This is the pre-deployment check that runs when the FSM first spins
 up."""
         for pre_check_data in self.pre_deploy_check:
             pre_check_key = pre_check_data['NAME']
-            self.app_logger.info('Executing pre-deploy-check %s' % (
-                pre_check_key))
-
             props = pika.spec.BasicProperties()
             props.correlation_id = self.state_id
             props.reply_to = self.reply_queue
@@ -653,6 +725,13 @@ up."""
             parameters = pre_check_data.get('PARAMETERS', {})
             parameters['command'] = pre_check_data['COMMAND']
             parameters['subcommand'] = pre_check_data['SUBCOMMAND']
+            step_name = "{CMD}:{SUB}".format(
+                CMD=parameters['command'],
+                SUB=parameters['subcommand'])
+            self.filter.set_field("active_step", step_name)
+            self.app_logger.info("Executing pre-deploy-check '%s's %s step" % (
+                pre_check_key, step_name))
+
             msg = {
                 'group': self.group,
                 'parameters': parameters,
@@ -667,13 +746,42 @@ up."""
                 body=json.dumps(msg),
                 properties=props)
 
-            self.app_logger.info("Sent pre-deploy check (%s) new job details" % (
-                plugin_routing_key))
-            self.app_logger.info("Details: %s" % (
-                str(msg)))
+            self.app_logger.debug("Sent pre-deploy check (%s) new job details: %s" % (
+                step_name, msg))
             # Begin consuming from reply_queue
-            self.app_logger.debug("Waiting for pre-deploy to update us with pass/fail")
 
+            ##########################################################
+            # First, consume and look for customary {status: started} message
+            self.app_logger.debug("Waiting for pre-deploy to update us with initial startup status")
+            check_failed = False
+            for method, properties, body in self.ch.consume(self.reply_queue):
+                # Stop consuming
+                self.ch.cancel()
+
+                _body = json.loads(body)
+                if _body.get('status', '') != "started":
+                    check_failed = True
+                else:
+                    self.app_logger.debug("Received good start-up message from worker")
+                break
+
+            if check_failed:
+                # get outta-here -- something blew up. And because the
+                # worker already failed, that's the only message we'll
+                # receive from them so we don't need to consume any
+                # more messages yet.
+                self.failed = True
+                self.filter.set_field("active_step", "")
+                self.app_logger.error("Aborting the release because pre-deploy check {CHECK_NAME} failed during worker start-up".format(
+                    CHECK_NAME=step_name))
+                return False
+
+            ##########################################################
+            # Now we consume the final result message from the
+            # worker. This is the part that tells us if they actually
+            # finished the step, and if the result matches what we
+            # expect.
+            self.app_logger.debug("Waiting for pre-deploy to update us with final pass/fail")
             for method, properties, body in self.ch.consume(self.reply_queue):
                 # Stop consuming
                 self.ch.cancel()
@@ -681,34 +789,39 @@ up."""
                 # Verify results
                 _body = json.loads(body)
                 if not _body == pre_check_data['EXPECTATION']:
-                    self.failed = True
-                    self.app_logger.error("Pre-deploy check failed. Received response '%s'."
+                    check_failed = True
+                    self.app_logger.error("Pre-deploy check failed. Received response '%s'. "
                                           "Expected response: '%s'" % (
                                               str(_body),
                                               str(pre_check_data['EXPECTATION'])))
                     self.app_logger.error("Aborting release due to failed pre-deploy check")
                 else:
-                    self.app_logger.error("Pre-deploy check passed: %s" % (
+                    self.app_logger.info("Pre-deploy check passed: %s" % (
                         str(_body)))
                 # Seriously, stop consuming
                 break
 
-            if self.failed:
+            if check_failed:
                 # get outta-here if something blew up
+                self.failed = True
+                self.filter.set_field("active_step", "")
                 return False
 
         ##############################################################
         # End the for loop over each check
         #
         # If we got this far then nothing failed. So let's return True
+        self.filter.set_field("active_step", "")
         return True
 
+    @method_wrapper
     def _post_deploy_action(self):
         """This is the post-deployment check that runs when the FSM is
 preparing to finish a deployment."""
+        self.filter.set_field("deploy_phase", "post-deploy-check")
         for post_check_data in self.post_deploy_action:
             post_check_key = post_check_data['NAME']
-            self.app_logger.info('Executing post-deploy-action %s' % (
+            self.app_logger.info('Executing post-deploy-action: %s' % (
                 post_check_key))
 
             props = pika.spec.BasicProperties()
@@ -718,6 +831,11 @@ preparing to finish a deployment."""
             parameters = post_check_data.get('PARAMETERS', {})
             parameters['command'] = post_check_data['COMMAND']
             parameters['subcommand'] = post_check_data['SUBCOMMAND']
+            step_name = "{CMD}:{SUB}".format(
+                CMD=parameters['command'],
+                SUB=parameters['subcommand'])
+            self.filter.set_field("active_step", step_name)
+
             msg = {
                 'group': self.group,
                 'parameters': parameters,
@@ -732,11 +850,38 @@ preparing to finish a deployment."""
                 body=json.dumps(msg),
                 properties=props)
 
-            self.app_logger.info("Sent post-deploy action (%s) new job details" % (
-                plugin_routing_key))
-            self.app_logger.info("Details: %s" % (
-                str(msg)))
-            # Begin consuming from reply_queue
+            self.app_logger.debug("Sent post-deploy action (%s) new job details: %s" % (
+                step_name, msg))
+
+            ##########################################################
+            # First, consume and look for customary {status: started} message
+            self.app_logger.debug("Waiting for post-deploy action to update us with initial startup status")
+            action_failed = False
+            for method, properties, body in self.ch.consume(self.reply_queue):
+                # Stop consuming
+                self.ch.cancel()
+
+                _body = json.loads(body)
+                if _body.get('status', '') != "started":
+                    action_failed = True
+                    self.app_logger.error("Post-deploy failed during startup. Received response '%s'." % (
+                        str(_body)))
+                    self.app_logger.error("Aborting release due to failed post-deploy startup")
+                else:
+                    self.app_logger.debug("Post-deploy startup is good")
+                # Seriously, stop consuming
+                break
+
+            if action_failed:
+                # get outta-here -- something blew up. And because the
+                # worker already failed, that's the only message we'll
+                # receive from them so we don't need to consume any
+                # more messages yet.
+                self.failed = True
+                self.filter.set_field("active_step", "")
+                self.app_logger.error("Aborting the release because post-deploy action failed during worker start-up")
+                return False
+
             self.app_logger.debug("Waiting for post-deploy to update us with pass/fail")
 
             for method, properties, body in self.ch.consume(self.reply_queue):
@@ -746,24 +891,27 @@ preparing to finish a deployment."""
                 # Verify results
                 _body = json.loads(body)
                 if not _body['status'] == 'completed':
-                    self.failed = True
+                    action_failed = True
                     self.app_logger.error("Post-deploy failed. Received response '%s'." % (
                         str(_body)))
                     self.app_logger.error("Aborting release due to failed post-deploy")
                 else:
-                    self.app_logger.error("Post-deploy passed: %s" % (
+                    self.app_logger.info("Post-deploy passed: %s" % (
                         str(_body)))
                 # Seriously, stop consuming
                 break
 
-            if self.failed:
+            if action_failed:
                 # get outta-here if something blew up
+                self.failed = True
+                self.filter.set_field("active_step", "")
                 return False
 
         ##############################################################
         # End the for loop over each check
         #
         # If we got this far then nothing failed. So let's return True
+        self.filter.set_field("active_step", "")
         return True
 
 

@@ -103,16 +103,13 @@ def main(args):  # pragma: no cover
     config = parse_config(args.config)
 
     out = logging.getLogger('recore')
-    notify = logging.getLogger('recore')
     try:
         recore.mongo.init_mongo(config['DB'])
     except pymongo.errors.ConnectionFailure, cfe:
         out.fatal("Connection failiure to Mongo: %s. Exiting ..." % cfe)
-        notify.fatal("Connection failiure to Mongo: %s. Exiting ..." % cfe)
         raise SystemExit(1)
     except pymongo.errors.PyMongoError, cfe:
         out.fatal("Unknown failiure with Mongo: %s. Exiting ..." % cfe)
-        notify.fatal("Unknown failiure with Mongo: %s. Exiting ..." % cfe)
         raise SystemExit(1)
 
     try:
@@ -120,21 +117,17 @@ def main(args):  # pragma: no cover
         connection.run()
     except KeyError, ke:
         out.fatal("Missing a required key in MQ config: %s" % ke)
-        notify.fatal("Missing a required key in MQ config: %s" % ke)
         raise SystemExit(1)
     except pika.exceptions.ProbableAuthenticationError, paex:
         out.fatal("Authentication issue connecting to AMQP: %s" % paex)
-        notify.fatal("Authentication issue connecting to AMQP: %s" % paex)
         raise SystemExit(1)
     except (
             pika.exceptions.ProtocolSyntaxError,
             pika.exceptions.AMQPError), ex:
         out.fatal("Unknown issue connecting to AMQP: %s" % ex)
-        notify.fatal("Unknown issue connecting to AMQP: %s" % ex)
         raise SystemExit(1)
     except KeyboardInterrupt:
         out.info("KeyboardInterrupt sent.")
-        notify.info("Keyboard Interrupt sent.")
         connection.stop()
         raise SystemExit(0)
 

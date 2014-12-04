@@ -45,5 +45,5 @@ APP_COMPONENT = "recore"
 # For AMQP channel/connection identification
 AMQP_COMPONENT = "RE-CORE"
 
-LOG_STRING = '%(date_string)s - app_component="%(app_component)s" - source_ip="%(source_ip)s" - log_level="%(levelname)s" - playbook_id="%(playbook_id)s" - deployment_id="%(deployment_id)s" - user_id="%(user_id)s" - message="%(message)s"'
+LOG_STRING = '%(date_string)s - app_component="%(app_component)s" - source_ip="%(source_ip)s" - log_level="%(levelname)s" - playbook_id="%(playbook_id)s" - deployment_id="%(deployment_id)s" - user_id="%(user_id)s" - active_step="%(active_step)s" - deploy_phase="%(deploy_phase)s" - message="%(message)s"'
 LOG_FORMATTER = logging.Formatter(LOG_STRING)

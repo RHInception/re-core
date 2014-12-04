@@ -71,7 +71,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         :rtype: pika.SelectConnection
 
         """
-        out.info('Attempting to open channel with connect string: %s' % (
+        out.info('Initializing AMQP connection with connect string: %s' % (
             self._connection_string))
 
         try:
@@ -124,7 +124,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         :type unused_connection: pika.SelectConnection
 
         """
-        out.info('AMQP Connection opened')
+        out.debug('AMQP Connection opened')
         self.add_on_connection_close_callback()
         self.open_channel()
 
@@ -178,7 +178,7 @@ class WinternewtBusClient(object):  # pragma: no cover
         :param pika.channel.Channel channel: The channel object
 
         """
-        out.info('Channel opened')
+        out.debug('Channel opened')
         self._channel = channel
         self.add_on_channel_close_callback()
         self.setup_exchange(self.EXCHANGE)
@@ -250,8 +250,8 @@ class WinternewtBusClient(object):  # pragma: no cover
         :param str|unicode body: The message body
 
         """
-        out.debug('Received message # %s from %s: %s',
-                  basic_deliver.delivery_tag, properties.app_id, body)
+        out.debug('Received message # %s from %s',
+                  basic_deliver.delivery_tag, properties.app_id)
         self.acknowledge_message(basic_deliver.delivery_tag)
         receive(unused_channel, basic_deliver, properties, body)
 

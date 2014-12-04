@@ -77,7 +77,7 @@ class ContextFilter(logging.Filter):
     to the class 'FIELDS' variable.
     """
 
-    FIELDS = ['playbook_id', 'deployment_id', 'app_component', 'user_id', 'source_ip']
+    FIELDS = ['playbook_id', 'deployment_id', 'app_component', 'user_id', 'source_ip', 'active_step', 'deploy_phase']
 
     def __init__(self, *args, **kwargs):
         super(ContextFilter, self).__init__(*args, **kwargs)
@@ -105,7 +105,7 @@ class ContextFilterUnique(logging.Filter):
     """A context-filter which can be used per-deployment (i.e., fields are
 not saved as class variables)"""
 
-    FIELDS = ['playbook_id', 'deployment_id', 'app_component', 'user_id', 'source_ip']
+    FIELDS = ['playbook_id', 'deployment_id', 'app_component', 'user_id', 'source_ip', 'active_step', 'deploy_phase']
 
     def __init__(self, *args, **kwargs):
         super(ContextFilterUnique, self).__init__(*args, **kwargs)

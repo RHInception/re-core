@@ -206,6 +206,9 @@ class TestFsm(TestCase):
 
                 with mock.patch('recore.amqp.CONF') as notif_conf:
                     notif_conf = NOTIFICATION_CONF
+                    set_field = mock.MagicMock()
+                    filter = mock.MagicMock(return_value=set_field)
+                    f.filter = filter
                     f._setup()
                     assert f.group == _state['group']
 
@@ -247,6 +250,9 @@ class TestFsm(TestCase):
 
                 with mock.patch('recore.amqp.MQ_CONF') as mq_conf:
                     mq_conf = MQ_CONF
+                    set_field = mock.MagicMock()
+                    filter = mock.MagicMock(return_value=set_field)
+                    f.filter = filter
                     f._setup()
                     assert f.group == _state['group']
 
@@ -282,6 +288,9 @@ class TestFsm(TestCase):
                 mongo.lookup_state.return_value = None
 
                 with self.assertRaises(LookupError):
+                    set_field = mock.MagicMock()
+                    filter = mock.MagicMock(return_value=set_field)
+                    f.filter = filter
                     f._setup()
 
     def test__setup_amqp_connect_fails(self):
@@ -300,6 +309,9 @@ class TestFsm(TestCase):
                 mongo.lookup_state.return_value = _state
 
                 with self.assertRaises(pika.exceptions.AMQPError):
+                    set_field = mock.MagicMock()
+                    filter = mock.MagicMock(return_value=set_field)
+                    f.filter = filter
                     f._setup()
 
     @mock.patch.object(FSM, '_post_deploy_action')
@@ -325,6 +337,9 @@ class TestFsm(TestCase):
                 dt.now.return_value = UTCNOW
                 with mock.patch('recore.amqp.CONF') as notif_conf:
                     notif_conf = NOTIFICATION_CONF
+                    set_field = mock.MagicMock()
+                    filter = mock.MagicMock(return_value=set_field)
+                    f.filter = filter
                     f._cleanup()
 
             # update state set the ended item in the state doc.
@@ -361,6 +376,9 @@ class TestFsm(TestCase):
                 with mock.patch('recore.amqp.CONF') as notif_conf:
                     notif_conf = NOTIFICATION_CONF
                     dt.now.return_value = UTCNOW
+                    set_field = mock.MagicMock()
+                    filter = mock.MagicMock(return_value=set_field)
+                    f.filter = filter
                     f._cleanup()
 
             # update state set the ended item in the state doc.
@@ -388,6 +406,9 @@ class TestFsm(TestCase):
             with self.assertRaises(Exception):
                 with mock.patch('recore.amqp.CONF') as notif_conf:
                     notif_conf = NOTIFICATION_CONF
+                    set_field = mock.MagicMock()
+                    filter = mock.MagicMock(return_value=set_field)
+                    f.filter = filter
                     f._cleanup()
 
         # At the very end a notification should go out no matter what
@@ -411,6 +432,9 @@ class TestFsm(TestCase):
             with mock.patch('recore.amqp.CONF') as notif_conf:
                 notif_conf = NOTIFICATION_CONF
                 with self.assertRaises(Exception):
+                    set_field = mock.MagicMock()
+                    filter = mock.MagicMock(return_value=set_field)
+                    f.filter = filter
                     f._cleanup()
 
         # At the very end a notification should go out no matter what
@@ -493,6 +517,9 @@ class TestFsm(TestCase):
 
         with mock.patch.object(f, 'update_state') as (
                 us):
+            set_field = mock.MagicMock()
+            filter = mock.MagicMock(return_value=set_field)
+            f.filter = filter
             f.dequeue_next_active_step()
             us.assert_called_once_with(_update_state)
             self.assertEqual(f.active_step, _active_step_string)
@@ -516,6 +543,9 @@ class TestFsm(TestCase):
         }
 
         with mock.patch.object(f, 'update_state') as (us):
+            set_field = mock.MagicMock()
+            filter = mock.MagicMock(return_value=set_field)
+            f.filter = filter
             f.move_active_to_completed()
             us.assert_called_once_with(_update_state)
             # TODO: Double check what this should evaluate to
@@ -549,6 +579,9 @@ class TestFsm(TestCase):
 
         with mock.patch('recore.amqp.MQ_CONF') as mq_conf:
             mq_conf = MQ_CONF
+            set_field = mock.MagicMock()
+            filter = mock.MagicMock(return_value=set_field)
+            f.filter = filter
             f._run()
 
         setup.assert_called_once_with()
@@ -604,6 +637,9 @@ class TestFsm(TestCase):
             f.ch = channel
             f.conn = mock.Mock(pika.connection.Connection)
 
+            set_field = mock.MagicMock()
+            filter = mock.MagicMock(return_value=set_field)
+            f.filter = filter
             f._setup()
             f.on_started(f.ch, *consume_iter[0])
 
@@ -687,6 +723,9 @@ Tests for the case where only one notification transport (irc, email, etc) is de
         # end of _run() with a call to a mocked out on_started()
         with mock.patch('recore.amqp.MQ_CONF') as mq_conf:
             mq_conf = MQ_CONF
+            set_field = mock.MagicMock()
+            filter = mock.MagicMock(return_value=set_field)
+            f.filter = filter
             f._run()
 
         self.assertEqual(send_notification.call_count, 1)
@@ -814,6 +853,9 @@ Tests for the case where only one notification transport (irc, email, etc) is de
         # end of _run() with a call to a mocked out on_started()
         with mock.patch('recore.amqp.MQ_CONF') as mq_conf:
             mq_conf = MQ_CONF
+            set_field = mock.MagicMock()
+            filter = mock.MagicMock(return_value=set_field)
+            f.filter = filter
             f._run()
 
         self.assertEqual(send_notification.call_count, 0)
@@ -868,6 +910,9 @@ Tests for the case where multiple notification transports (irc, email, etc) are 
         # end of _run() with a call to a mocked out on_started()
         with mock.patch('recore.amqp.MQ_CONF') as mq_conf:
             mq_conf = MQ_CONF
+            set_field = mock.MagicMock()
+            filter = mock.MagicMock(return_value=set_field)
+            f.filter = filter
             f._run()
 
         self.assertEqual(send_notification.call_count, 2)
@@ -922,7 +967,7 @@ Tests for the case where multiple notification transports (irc, email, etc) are 
         """Post-deploy action passes"""
         f = FSM(TEST_PBID, state_id)
 
-        msg_completed = {'status': 'completed'}
+        msg_completed = {'status': 'started'}
 
         consume_iter = [
             (mock.Mock(name="method_mocked"),
@@ -956,6 +1001,9 @@ Tests for the case where multiple notification transports (irc, email, etc) are 
 
         with mock.patch('recore.amqp.MQ_CONF') as mq_conf:
             mq_conf = MQ_CONF
+            set_field = mock.MagicMock()
+            filter = mock.MagicMock(return_value=set_field)
+            f.filter = filter
             self.assertEqual(f._post_deploy_action(), True)
 
     @mock.patch.object(FSM, 'move_remaining_to_skipped')
@@ -1000,4 +1048,7 @@ Tests for the case where multiple notification transports (irc, email, etc) are 
 
         with mock.patch('recore.amqp.MQ_CONF') as mq_conf:
             mq_conf = MQ_CONF
+            set_field = mock.MagicMock()
+            filter = mock.MagicMock(return_value=set_field)
+            f.filter = filter
             self.assertEqual(f._post_deploy_action(), False)
