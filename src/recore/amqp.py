@@ -505,6 +505,7 @@ def main():  # pragma no cover
     """
     Example main function.
     """
+    LOG_FORMAT = "%(message)s"
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
     import json
     with open('../../fake-settings.json') as settings:

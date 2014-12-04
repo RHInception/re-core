@@ -63,7 +63,7 @@ instance with that document ID."""
         else:
             out.error("Playbook %s does not exists in mongo" % playbook)
             id = None
-    except bson.errors.InvalidId, bei:
+    except bson.errors.InvalidId:
         out.error("Invalid ObjectID given for lookup: %s" % str(playbook))
         id = None
     except Exception, e:

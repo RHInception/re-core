@@ -22,15 +22,11 @@ import logging
 import os.path
 import recore.mongo
 import recore.amqp
-import sys
 import pika.exceptions
 import pika.connection
 
 
 def start_logging(log_file, log_level):
-    # The context filter accumulates information over it's lifetime
-    context_filter = recore.contextfilter.ContextFilter()
-
     # Create logger obj and set threshold
     recore_log = logging.getLogger('recore')
     # The core logger allows all levels of messages to flow into it

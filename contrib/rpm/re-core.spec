@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.6
-Release: 1%{?Dist}
+Release: 2%{?Dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -55,6 +55,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Thu Dec  4 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.6-2
+- Logging messages/levels normalized
+
 * Mon Dec  1 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.6-1
 - Now with consistent logging format
 

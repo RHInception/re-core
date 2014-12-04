@@ -35,9 +35,9 @@ RELEASE_LOG_DIR = None
 # These method loggers are for EXTREME debugging purposes only
 detailed_debugging = False
 
-if detailed_debugging:
+if detailed_debugging:  # pragma: no cover
     dd_level = logging.DEBUG
-else:
+else:  # pragma: no cover
     dd_level = logging.NOTSET
 
 method_logger = logging.getLogger("methodlogger")

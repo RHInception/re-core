@@ -161,13 +161,11 @@ def get_logger_filter(lgr, filter_name=None):
             for f in l.filters:
                 if f.name == filter_name:
                     return f
-    except Exception:
+            return False
+
+    except Exception:  # pragma: no cover
         # Don't screw everything up if filter finding fails
         return False
-    else:
-        # No filters were discoverable
-        return False
-
 
 if __name__ == '__main__':  # pragma: no cover
     levels = (logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR, logging.CRITICAL)
