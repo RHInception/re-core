@@ -1,45 +1,30 @@
-%{?scl:%scl_package re-core}
-%{!?scl:%global pkg_name %{name}}
-
-# %if 0%{?rhel} && 0%{?rhel} <= 6
-# %{!?__python2: %global __python2 /usr/bin/python2}
-# %{!?python2_sitelib: %global python2_sitelib %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
-# %{!?python2_sitearch: %global python2_sitearch %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
-# %endif
+%if 0%{?rhel} && 0%{?rhel} <= 6
+%{!?__python2: %global __python2 /usr/bin/python2}
+%{!?python2_sitelib: %global python2_sitelib %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
+%{!?python2_sitearch: %global python2_sitearch %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
+%endif
 
 %global _pkg_name recore
 
-Name:           %{?scl_prefix}re-core
-Version: 	0.0.6
-Release: 	6%{?dist}
-Summary: 	FSM of the Inception Release Engine
+Name: re-core
+Summary: FSM of the Inception Release Engine
+Version: 0.0.6
+Release: 7%{?Dist}
 
-Group: 		Applications/System
-License: 	AGPLv3
-Url: 		https://github.com/rhinception/re-core
-Source0: 	%{pkg_name}-%{version}.tar.gz
+Group: Applications/System
+License: AGPLv3
+Source0: %{name}-%{version}.tar.gz
+Url: https://github.com/rhinception/re-core
 
-
-
-BuildArch: 	noarch
-BuildRequires: 	%{?scl_prefix}python2-devel
-BuildRequires: 	%{?scl_prefix}python-setuptools
-Requires: 	%{?scl_prefix}python-pymongo
-# When we decide to fully embrace SCL we will need the py27 versions
-# of these packages. But those packages don't exist in SCL yet, so
-# they are listed without the scl macro for now.
-Requires: 	python-pika
-Requires: 	python-argparse
-Requires: 	pytz
-# Requires: 	%{?scl_prefix}python-pika
-# Requires: 	%{?scl_prefix}python-argparse
-# Requires: 	%{?scl_prefix}pytz
-
-
-# Uncomment this if we ever decide to enable rpm-build-%check scripts
-# (they run the unit tests when the RPM builds)
-# BuildRequires: %{?scl_prefix}python-nose
-# %{?el6:%{?scl_prefix}BuildRequires: %{?scl_prefix}python-unittest2}
+BuildArch: noarch
+BuildRequires: python2-devel
+BuildRequires: python-setuptools
+Requires: python-pymongo
+Requires: python-pika
+Requires: python-argparse
+Requires: pytz
+# BuildRequires: python-nose
+# %{?el6:BuildRequires: python-unittest2}
 
 %description
 This is the core component of the Inception Release Engine. The core
@@ -50,32 +35,29 @@ The core oversees the execution of all release steps for any given
 project. The core is separate from the actual execution of each
 release step. Execution is delegated to the worker component.
 
-# See note about above check scripts
 # %check
 # nosetests -v
 
 %prep
-%setup -n %{pkg_name}-%{version} -q
+%setup -q
 
 %build
-%{?scl:scl enable %{scl} "}
-%{__python} setup.py build
-%{?scl:"}
+%{__python2} setup.py build
 
 %install
 rm -rf $RPM_BUILD_ROOT
-%{?scl:scl enable %{scl} "}
-%{__python} setup.py install -O1 --root=$RPM_BUILD_ROOT --record=re-core-files.txt
-
-%{?scl:"}
+%{__python2} setup.py install -O1 --root=$RPM_BUILD_ROOT --record=re-core-files.txt
 
 %files -f re-core-files.txt
 %defattr(-, root, root)
-%dir %{python_sitelib}/%{_pkg_name}
+%dir %{python2_sitelib}/%{_pkg_name}
 %{_bindir}/re-core
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Fri Dec  5 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.6-7
+- Fix broken build
+
 * Fri Dec  5 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.6-6
 - Remove old debugging statements
 
