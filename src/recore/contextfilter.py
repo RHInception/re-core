@@ -80,7 +80,7 @@ class ContextFilter(logging.Filter):
     FIELDS = ['playbook_id', 'deployment_id', 'app_component', 'user_id', 'source_ip', 'active_step', 'deploy_phase']
 
     def __init__(self, *args, **kwargs):
-        super(ContextFilter, self).__init__(*args, **kwargs)
+        logging.Filter.__init__(self, *args, **kwargs)
         self.set_field('app_component', recore.constants.APP_COMPONENT)
 
     def filter(self, record):
@@ -108,7 +108,7 @@ not saved as class variables)"""
     FIELDS = ['playbook_id', 'deployment_id', 'app_component', 'user_id', 'source_ip', 'active_step', 'deploy_phase']
 
     def __init__(self, *args, **kwargs):
-        super(ContextFilterUnique, self).__init__(*args, **kwargs)
+        logging.Filter.__init__(self, *args, **kwargs)
         self.my_fields = {}
         self.set_field('app_component', recore.constants.APP_COMPONENT)
 
