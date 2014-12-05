@@ -32,40 +32,6 @@ import ssl
 RELEASE_LOG_DIR = None
 
 
-# These method loggers are for EXTREME debugging purposes only
-detailed_debugging = False
-
-if detailed_debugging:  # pragma: no cover
-    dd_level = logging.DEBUG
-else:  # pragma: no cover
-    dd_level = logging.NOTSET
-
-method_logger = logging.getLogger("methodlogger")
-method_logger.setLevel(dd_level)
-method_logger_file_handler = logging.FileHandler("/tmp/fsm-debug.log")
-method_logger_file_handler.setLevel(dd_level)
-method_logger.addHandler(method_logger_file_handler)
-
-method_logger_names = logging.getLogger("methodloggernames")
-method_logger_names.setLevel(dd_level)
-method_logger_file_handler_names = logging.FileHandler("/tmp/fsm-debug-names.log")
-method_logger_file_handler_names.setLevel(dd_level)
-method_logger_names.addHandler(method_logger_file_handler_names)
-
-
-def method_wrapper(f):
-    def decorator(*args, **kwargs):
-        o = logging.getLogger('methodlogger')
-        n = logging.getLogger('methodloggernames')
-        o.debug("Entered: %s(%s, %s)" % (
-            str(f.func_name),
-            str(args[1:]),
-            str(kwargs)))
-        n.debug(f.func_name)
-        return f(*args, **kwargs)
-    return decorator
-
-
 class FSM(threading.Thread):
     """The re-core Finite State Machine to oversee the execution of
 a playbooks's release steps."""
@@ -93,7 +59,6 @@ a playbooks's release steps."""
         self.reply_queue = None
         self.failed = False
 
-    @method_wrapper
     def run(self):  # pragma: no cover
         try:
             self._run()
@@ -109,7 +74,6 @@ a playbooks's release steps."""
 
         return True
 
-    @method_wrapper
     def _run(self):
         self._setup()
         try:
@@ -180,7 +144,6 @@ a playbooks's release steps."""
             self.ch.cancel()
             self.on_started(self.ch, method, properties, body)
 
-    @method_wrapper
     def on_started(self, channel, method_frame, header_frame, body):
         _body = json.loads(body)
         self.app_logger.debug("Worker responded with: %s" % _body)
@@ -206,7 +169,6 @@ a playbooks's release steps."""
                 self.ch.cancel()
                 self.on_ended(self.ch, method, properties, body)
 
-    @method_wrapper
     def on_ended(self, channel, method_frame, header_frame, body):
         msg = json.loads(body)
         self.app_logger.debug("Got completed/errored message back from the worker: %s" % msg)
@@ -223,7 +185,6 @@ a playbooks's release steps."""
             self.failed = True
             self.move_remaining_to_skipped()
 
-    @method_wrapper
     def move_active_to_completed(self):
         finished_step = self.active_step
         self.active_sequence['completed_steps'].append(finished_step)
@@ -237,7 +198,6 @@ a playbooks's release steps."""
         }
         self.update_state(_update_state)
 
-    @method_wrapper
     def move_remaining_to_skipped(self):
         """Most likely an error message has just arrived from a worker.
 
@@ -273,7 +233,6 @@ in the DB.
         self.failed = True
         self.app_logger.warn("Recorded failed state in this FSM instance")
 
-    @method_wrapper
     def dequeue_next_active_step(self, to='active_step'):
         """Take the next remaining step/sequence off the queue and move it
         into active step/sequence.
@@ -389,7 +348,6 @@ in the DB.
         }
         self.update_state(_update_state)
 
-    @method_wrapper
     def notify(self, phase, msg=None):
         """Send some notifications. Allowed values for `phase` include:
 'started', 'completed', and 'failed'.
@@ -419,7 +377,6 @@ The optional `msg` parameter allows you to provide a custom message.
         else:
             return False
 
-    @method_wrapper
     def notify_step(self, response=None):
         """A step may have a user-defined notification. If one is set this
         method will send the proper notification out for processing.
@@ -492,7 +449,6 @@ Returns `None` if no action was required. Else, returns `True`
             ", ".join(transports)))
         return True
 
-    @method_wrapper
     def update_state(self, new_state):
         """
         Update the state document in Mongo for this release
@@ -512,7 +468,6 @@ Returns `None` if no action was required. Else, returns `True`
                 "Propagating PyMongo error: %s" % (new_state, pmex))
             raise pmex
 
-    @method_wrapper
     def _cleanup(self):
         self.app_logger.debug("Entered cleanup routine")
         if not self._post_deploy_action():
@@ -549,7 +504,6 @@ Returns `None` if no action was required. Else, returns `True`
             self.app_logger.debug("Cleaned up all leftovers. We should terminate next")
         self.app_logger.debug("Finished cleanup routine")
 
-    @method_wrapper
     def _connect_mq(self):
         self.app_logger.debug("Opening AMQP connection for release with id: %s" % self.state_id)
 
@@ -572,7 +526,6 @@ Returns `None` if no action was required. Else, returns `True`
         self.reply_queue = result.method.queue
         return (channel, connection)
 
-    @method_wrapper
     def _parse_connect_params(self, mq_config):
         """Parse the given dictionary ``mq_config``. Return connection params,
         and a properly formatted AMQP connection string with the
@@ -619,7 +572,6 @@ Returns `None` if no action was required. Else, returns `True`
 
         return (con_params, connection_string)
 
-    @method_wrapper
     def _setup(self):
         if not self.initialized:
             self.filter.set_field('deploy_phase', 'initialization')
@@ -664,7 +616,6 @@ Returns `None` if no action was required. Else, returns `True`
                 self.app_logger.info("FSM initialized")
                 self.filter.set_field('deploy_phase', 'execution')
 
-    @method_wrapper
     def _first_run(self):
         """Things to do only on initialization.
 
@@ -712,7 +663,6 @@ worker.
         self.filter.set_field("deploy_phase", "")
         return True
 
-    @method_wrapper
     def _pre_deploy_check(self):
         """This is the pre-deployment check that runs when the FSM first spins
 up."""
@@ -814,7 +764,6 @@ up."""
         self.filter.set_field("active_step", "")
         return True
 
-    @method_wrapper
     def _post_deploy_action(self):
         """This is the post-deployment check that runs when the FSM is
 preparing to finish a deployment."""
