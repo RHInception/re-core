@@ -53,7 +53,7 @@ def start_logging(log_file, log_level):
     recore_stream_handler.setFormatter(recore.constants.LOG_FORMATTER)
     recore_stream_handler.setLevel(logging.INFO)
     recore_log.addHandler(recore_stream_handler)
-    recore_log.info("initialized core logging")
+    recore_log.info("Initialized core logging with level=%s and log file=%s" % (log_level, log_file))
     recore_stream_handler.setLevel(logging.WARN)
 
 

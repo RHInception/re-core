@@ -9,7 +9,7 @@
 Name: re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.6
-Release: 3%{?Dist}
+Release: 4%{?Dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -55,6 +55,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Fri Dec  5 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.6-4
+- Add more info to logging initialization message
+
 * Fri Dec  5 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.6-3
 - Fix py 2.6 incompat in log filter subclassing
 
