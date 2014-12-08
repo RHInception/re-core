@@ -1,3 +1,6 @@
+%{?scl:%scl_package re-core}
+%{!?scl:%global pkg_name %{name}}
+
 %if 0%{?rhel} && 0%{?rhel} <= 6
 %{!?__python2: %global __python2 /usr/bin/python2}
 %{!?python2_sitelib: %global python2_sitelib %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
@@ -6,25 +9,32 @@
 
 %global _pkg_name recore
 
-Name: re-core
+Name: %{?scl_prefix}re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.6
-Release: 7%{?Dist}
+Release: 9%{?dist}
 
 Group: Applications/System
 License: AGPLv3
-Source0: %{name}-%{version}.tar.gz
+Source0: %{pkg_name}-%{version}.tar.gz
 Url: https://github.com/rhinception/re-core
 
 BuildArch: noarch
-BuildRequires: python2-devel
-BuildRequires: python-setuptools
-Requires: python-pymongo
-Requires: python-pika
-Requires: python-argparse
-Requires: pytz
-# BuildRequires: python-nose
-# %{?el6:BuildRequires: python-unittest2}
+# To build the thing
+BuildRequires: %{?scl_prefix}python2-devel
+BuildRequires: %{?scl_prefix}python-setuptools
+# Already in scl
+Requires: %{?scl_prefix}python-pymongo
+# Build by Inception, with <3
+Requires: %{?scl_prefix}python-pika
+Requires: %{?scl_prefix}pytz
+# Only a hard-coded require if not on py27 scl
+%{!?scl:Requires: python-argparse}
+# A requirement for py27 scl
+%{?scl:Requires: %{?scl_prefix}python2-devel}
+
+# BuildRequires: %{?scl_prefix}python-nose
+# %{?el6:%{?scl_prefix}BuildRequires: %{?scl_prefix}python-unittest2}
 
 %description
 This is the core component of the Inception Release Engine. The core
@@ -39,14 +49,18 @@ release step. Execution is delegated to the worker component.
 # nosetests -v
 
 %prep
-%setup -q
+%setup -n %{pkg_name}-%{version} -q
 
 %build
+%{?scl:scl enable %{scl} - << \EOF}
 %{__python2} setup.py build
+%{?scl:EOF}
 
 %install
 rm -rf $RPM_BUILD_ROOT
+%{?scl:scl enable %{scl} - << \EOF}
 %{__python2} setup.py install -O1 --root=$RPM_BUILD_ROOT --record=re-core-files.txt
+%{?scl:EOF}
 
 %files -f re-core-files.txt
 %defattr(-, root, root)
@@ -55,6 +69,12 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Mon Dec 08 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.6-9
+- One more try with SCL
+
+* Sat Dec  6 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.6-8
+- Try to do SCL again
+
 * Fri Dec  5 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.6-7
 - Fix broken build
 
