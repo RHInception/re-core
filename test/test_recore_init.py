@@ -18,13 +18,15 @@ import recore
 import logging
 import mock
 import pika
+from argparse import Namespace
 
 
 class TestRecoreInit(TestCase):
     def setUp(self):
-        self.config_file_dne = '/dev/ihopethisfiledoesntexist.json'
-        self.config_file_invalid = './test/files/settings-example-invalid.json'
-        self.config_file_valid = './test/files/settings-example.json'
+        self.config_file_dne = Namespace(config='/dev/ihopethisfiledoesntexist.json')
+        self.config_file_invalid = Namespace(config='./test/files/settings-example-invalid.json')
+        self.config_file_valid = Namespace(config='./test/files/settings-example.json',
+                                           triggers='./examples/triggers/triggers.trigger.json')
         self.log_level = logging.DEBUG
 
     def test_start_logging(self):

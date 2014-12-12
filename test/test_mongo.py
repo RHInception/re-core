@@ -140,6 +140,7 @@ class TestMongo(TestCase):
                     'failed': False,
                     'created': UTCNOW,
                     'dynamic': {},
+                    'triggers': [],
                     'active_sequence':
                     {
                         'steps': [
