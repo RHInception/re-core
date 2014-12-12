@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright © 2014 SEE AUTHORS FILE
 #
@@ -16,7 +15,21 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
-import recore.parser
+import recore
 
-recore.parser.args.func(args)
+description = """Release Engine CORE Component. A multi-threaded finite state machine
+(FSM) which executes playbooks"""
 
+epilog = """Configuration and trigger files are in JSON format. Triggers must
+match the glob '*.trigger.json'. Validation errors? Try out
+http://jsonlint.com/ or 'python -m json.tool < CONFIG.json' to get some more insight."""
+
+parser = argparse.ArgumentParser(
+    description=description,
+    epilog=epilog)
+
+parser.add_argument('-c', '--config', required=True, help='Config file to use')
+parser.add_argument('-t', '--triggers', help='Path to directory containing trigger configurations')
+
+parser.set_defaults(func=recore.main)
+args = parser.parse_args()
