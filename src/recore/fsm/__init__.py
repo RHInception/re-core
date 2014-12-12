@@ -36,6 +36,8 @@ class FSM(threading.Thread):
     """The re-core Finite State Machine to oversee the execution of
 a playbooks's release steps."""
 
+    triggers = []
+
     def __init__(self, playbook_id, state_id, *args, **kwargs):
         """Not really overriding the threading init method. Just describing
         the parameters we expect to receive when initialized and

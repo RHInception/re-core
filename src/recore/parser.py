@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser(
     epilog=epilog)
 
 parser.add_argument('-c', '--config', required=True, help='Config file to use')
-parser.add_argument('-t', '--trigger', help='Path to trigger configuration')
+parser.add_argument('-t', '--triggers', help='Path to trigger configuration')
 
 parser.set_defaults(func=recore.main)
 args = parser.parse_args()

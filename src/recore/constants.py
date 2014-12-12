@@ -34,6 +34,10 @@ NEW_STATE_RECORD = {
     'executed': [],
     # Currently running sequence
     'active_sequence': {},
+
+    # Any triggers the core was configured with when the deployment
+    # started
+    'triggers': [],
 }
 
 ######################################################################
