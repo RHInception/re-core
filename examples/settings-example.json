@@ -1,6 +1,7 @@
 {
     "LOGFILE": "recore.log",
     "RELEASE_LOG_DIR": null,
+    "TRIGGERS": "examples/triggers/triggers.trigger.json",
     "MQ": {
         "SERVER": "amqp.example.com",
         "NAME": "username",

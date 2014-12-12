@@ -18,18 +18,19 @@ import argparse
 import recore
 
 description = """Release Engine CORE Component. A multi-threaded finite state machine
-(FSM) which executes playbooks"""
+(FSM) which executes playbooks."""
 
-epilog = """Configuration and trigger files are in JSON format. Triggers must
-match the glob '*.trigger.json'. Validation errors? Try out
-http://jsonlint.com/ or 'python -m json.tool < CONFIG.json' to get some more insight."""
+epilog = """Configuration and trigger files are in JSON format. Validation
+errors? Make sure you're using double-quote characters in strings. Try
+out http://jsonlint.com/ or 'python -m json.tool < CONFIG.json' to get
+some more insight."""
 
 parser = argparse.ArgumentParser(
     description=description,
     epilog=epilog)
 
 parser.add_argument('-c', '--config', required=True, help='Config file to use')
-parser.add_argument('-t', '--triggers', help='Path to directory containing trigger configurations')
+parser.add_argument('-t', '--trigger', help='Path to trigger configuration')
 
 parser.set_defaults(func=recore.main)
 args = parser.parse_args()
