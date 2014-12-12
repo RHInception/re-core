@@ -82,7 +82,7 @@ def parse_config(args):
 
         # Any trigger provided on the CLI? That overrides config file
         if 'triggers' in args:
-            notify.debug("Discovered CLI provided trigger file. Evaluating it")
+            notify.debug("Evaluating discovered triggers in CLI options")
             try:
                 triggers = recore.utils.parse_config_file(
                     os.path.realpath(args.triggers))
@@ -95,7 +95,7 @@ def parse_config(args):
                     ERROR=str(e)))
                 raise e
         elif config.get('TRIGGERS', None):
-            notify.debug("Discovered triggers in main config file. Evaluating it")
+            notify.debug("Evaluating discovered triggers in the main config file")
             try:
                 triggers = recore.utils.parse_config_file(
                     os.path.realpath(config['TRIGGERS']))
@@ -103,7 +103,7 @@ def parse_config(args):
                 notify.debug("Evaluated triggers: %s" % str(triggers))
             except Exception, e:
                 notify.error("Couldn't parse triggers in {TRIGGER_FILE}. Error: {ERROR}".format(
-                    TRIGGER_FILE=args.triggers,
+                    TRIGGER_FILE=config['TRIGGERS'],
                     ERROR=str(e)))
                 raise e
 

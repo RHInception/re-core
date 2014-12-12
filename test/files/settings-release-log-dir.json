@@ -1,0 +1,57 @@
+{
+    "LOGFILE": "recore.log",
+    "RELEASE_LOG_DIR": "/tmp/fsm",
+    "MQ": {
+        "SERVER": "amqp.example.com",
+        "NAME": "username",
+        "PASSWORD": "password",
+        "EXCHANGE": "my_exchange",
+        "QUEUE": "re",
+        "VHOST": "/",
+        "PORT": 5671,
+        "SSL": true
+    },
+    "DB": {
+        "SERVERS": [
+            "mongo01.example.com",
+            "mongo02.example.com"
+        ],
+        "DATABASE": "re",
+        "NAME": "lordmongo",
+        "PASSWORD": "webscale",
+        "PORT": 27017
+    },
+    "PHASE_NOTIFICATION": {
+        "TABOOT_URL":  "http://example.com/taboot/%s/",
+        "TOPIC": "notify.irc" ,
+        "TARGET": ["#achannel", "someperson"]
+    },
+    "PRE_DEPLOY_CHECK": [
+        {
+            "NAME": "Require Change Record",
+            "COMMAND": "servicenow",
+            "SUBCOMMAND": "getchangerecord",
+            "PARAMETERS": {
+                "project": "myproject",
+                "some_filter": "to find the record"
+            },
+            "EXPECTATION": {
+                "status": "completed",
+                "data": {
+                    "exists": true
+                }
+            }
+        }
+    ],
+    "POST_DEPLOY_ACTION": [
+        {
+            "NAME": "Update Change Record",
+            "COMMAND": "servicenow",
+            "SUBCOMMAND": "updatechgrecord",
+            "PARAMETERS": {
+                "project": "myproject",
+                "some_filter": "to find the record"
+            }
+        }
+    ]
+}

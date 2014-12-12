@@ -18,6 +18,7 @@ import recore
 import logging
 import mock
 import pika
+import recore.fsm
 from argparse import Namespace
 
 
@@ -25,8 +26,19 @@ class TestRecoreInit(TestCase):
     def setUp(self):
         self.config_file_dne = Namespace(config='/dev/ihopethisfiledoesntexist.json')
         self.config_file_invalid = Namespace(config='./test/files/settings-example-invalid.json')
-        self.config_file_valid = Namespace(config='./test/files/settings-example.json',
-                                           triggers='./examples/triggers/triggers.trigger.json')
+        self.config_file_valid = Namespace(config='./test/files/settings-example.json')
+        self.config_file_per_release_logging = Namespace(config='./test/files/settings-release-log-dir.json')
+
+        # These act as if triggers were specified on the CLI
+        self.config_file_good_triggers = Namespace(config='./test/files/settings-example.json',
+                                                   triggers='./examples/triggers/triggers.trigger.json')
+        self.config_file_invalid_json_triggers = Namespace(config='./test/files/settings-example.json',
+                                                           triggers='./test/files/invalid.triggers.json')
+        self.config_file_triggers_dne = Namespace(config='./test/files/settings-example.json',
+                                                  triggers='/dev/ihopethisfiledoesntexist.json')
+
+        # This is for a config file pointing to a bad trigger file
+        self.config_file_points_to_bad_trigger_file = Namespace(config='./test/files/settings-invalid-triggers.json')
         self.log_level = logging.DEBUG
 
     def test_start_logging(self):
@@ -35,8 +47,8 @@ class TestRecoreInit(TestCase):
         _logcore = logging.getLogger('recore')
 
         # Handlers, etc, are bumped to 4 because of testing
-        self.assertEqual(len(_logcore.handlers), 4)
-        self.assertEqual(len(_logcore.filters), 2)
+        self.assertEqual(len(_logcore.handlers), 14)
+        self.assertEqual(len(_logcore.filters), 7)
         self.assertEqual(_logcore.level, self.log_level,
                          msg="logcore level is actually %s but we wanted %s" % (_logcore.level, self.log_level))
 
@@ -83,6 +95,32 @@ class TestRecoreInit(TestCase):
         # Verify that init_mongo sets the mongo module conn/db variables
         self.assertIs(recore.mongo.connection, connection)
         self.assertIs(recore.mongo.database, database)
+
+    def test_parse_config_triggers_good(self):
+        """We can configure the FSM with triggers when they're defined"""
+        cfg = recore.parse_config(self.config_file_good_triggers)
+        assert recore.fsm.FSM.triggers != []
+
+    def test_parse_config_triggers_invalid_json(self):
+        """We gracefully exit if a trigger file is invalid"""
+        with self.assertRaises(SystemExit):
+            cfg = recore.parse_config(self.config_file_invalid_json_triggers)
+
+    def test_parse_config_triggers_done_exist(self):
+        """We gracefully exit if a specified trigger file doesn't exist"""
+        with self.assertRaises(SystemExit):
+            cfg = recore.parse_config(self.config_file_triggers_dne)
+
+    def test_parse_config_file_triggers_points_to_bad_triggers_file(self):
+        """We gracefully exit if the main config file points to a bad triggers file"""
+        with self.assertRaises(SystemExit):
+            cfg = recore.parse_config(self.config_file_points_to_bad_trigger_file)
+
+    def test_parse_config_per_release_log_dir(self):
+        """The FSM is configured if RELEASE_LOG_DIR is set"""
+        cfg = recore.parse_config(self.config_file_per_release_logging)
+        self.assertEqual(recore.fsm.RELEASE_LOG_DIR, '/tmp/fsm')
+
 
     #
     # Combined connect_mq with init_amqp. Need to refacter this unit test
