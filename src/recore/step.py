@@ -67,3 +67,12 @@ thinking about them as proper objects.
     @property
     def command(self):
         return self._command
+
+
+# Custom encoder for Steps so we can dump them with std json tools
+class StepEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Step):
+            return obj.to_json()
+        else:
+            return json.JSONEncoder.default(self, obj)
