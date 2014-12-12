@@ -120,6 +120,7 @@ class TestMongo(TestCase):
         collection.insert = mock.MagicMock(return_value=12345)
         db.__getitem__.return_value = collection
         group = 'testgroup'
+        user_id = 'justabro'
 
         with mock.patch('recore.mongo.lookup_playbook') as (
                 mongo.lookup_playbook):
@@ -133,10 +134,21 @@ class TestMongo(TestCase):
                 mongo.datetime.datetime.utcnow = mock.MagicMock(
                     return_value=UTCNOW)
 
+                # initialize state adds the calling user's ID to the
+                # state record. It pulls this from the contextfilter
+                # attached to the current logger. We need to slip some
+                # values in there while nobody is watching
+                get_field = mock.Mock(return_value=user_id)
+                filter = mock.Mock()
+                filter.get_field = get_field
+                logger_filter.return_value = filter
+
+                # Ok, carry on
                 mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
                 db['state'].insert.assert_called_once_with({
                     'executed': [],
                     'group': group,
+                    'user_id': user_id,
                     'failed': False,
                     'created': UTCNOW,
                     'dynamic': {},

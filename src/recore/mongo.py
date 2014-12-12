@@ -117,6 +117,7 @@ def initialize_state(d, pbid, dynamic={}):
 #. Return the ID"""
     logname = 'recore.playbook.' + str(pbid)
     out = logging.getLogger(logname)
+    filter = recore.contextfilter.get_logger_filter(logname)
 
     # Look up the to-release playbook
     _playbook = lookup_playbook(d, pbid)
@@ -135,6 +136,7 @@ def initialize_state(d, pbid, dynamic={}):
     state0.update({
         'created': datetime.datetime.utcnow(),
         'group': _playbook['group'],
+        'user_id': filter.get_field('user_id'),
         'playbook_id': pbid,
         'dynamic': dynamic,
         'execution': _playbook['execution'],
@@ -144,7 +146,6 @@ def initialize_state(d, pbid, dynamic={}):
 
     try:
         id = d['state'].insert(state0)
-        filter = recore.contextfilter.get_logger_filter(logname)
         filter.set_field('deployment_id', str(id))
         out.debug("Added new state record with id: %s" % str(id))
         out.debug("New state record: %s" % state0)

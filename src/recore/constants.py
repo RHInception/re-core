@@ -15,9 +15,18 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import logging
 
+# I HEARD YOU LIKE PASSING UNITTESTS (keep reading)
+#
+# If you enjoy passing unittests, and you add a field to the new state
+# record, make sure you account for that in the mongo tests. Most
+# likely you're going to want to look at
+# test/test_mongo.py:test_initialize_state(). There's an
+# "assert_called_once_with" that expects each of these keys to be
+# present.
 NEW_STATE_RECORD = {
     # Meta
     'reply_to': None,
+    'user_id': None,
     'group': None,
     'created': None,
     'ended': None,

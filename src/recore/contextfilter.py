@@ -100,6 +100,10 @@ class ContextFilter(logging.Filter):
     def set_field(cls, k, v):
         cls.my_fields[k] = v
 
+    @classmethod
+    def get_field(cls, k):
+        """If it doesn't exist, you shouldn't have requested it"""
+        return cls.my_fields[k]
 
 class ContextFilterUnique(logging.Filter):
     """A context-filter which can be used per-deployment (i.e., fields are
@@ -123,6 +127,9 @@ not saved as class variables)"""
     def set_field(self, k, v):
         self.my_fields[k] = v
 
+    def get_field(self, k):
+        """If it doesn't exist, you shouldn't have requested it"""
+        return self.my_fields[k]
 
 def date_string():
     """Return a properly formatted date string for log messages"""
