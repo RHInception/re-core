@@ -66,7 +66,7 @@ instance with that document ID."""
     except bson.errors.InvalidId:
         out.error("Invalid ObjectID given for lookup: %s" % str(playbook))
         id = None
-    except Exception, e:
+    except Exception, e:  # pragma: no cover
         out.error("Unknown error while looking up playbook: %s" % str(e))
         id = None
 
