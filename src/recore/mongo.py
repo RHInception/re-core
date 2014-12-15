@@ -202,6 +202,15 @@ def insert_step_triggers(execution, pbid, triggers=[]):
 `execution` - an execution sequence"""
     logname = 'recore.playbook.' + str(pbid)
     out = logging.getLogger(logname)
+    filter = recore.contextfilter.get_logger_filter(logname)
+    filter.set_field("deploy_phase", "insert-triggers")
+
+    # Which attributes to compare dependingon WHEN criteria
+    condition_map = {
+        'NEXT_COMMAND': 'command',
+        'NEXT_SUBCOMMAND': 'subcommand'
+    }
+
     if triggers:
         out.debug("Inserting %s step triggers" % len(triggers))
     else:
@@ -219,11 +228,40 @@ def insert_step_triggers(execution, pbid, triggers=[]):
             for i in xrange(len(steps)):
                 step = Step(steps[i])
                 ######################################################
-                # Do the needful for each 'NEXT_COMMAND'
-                condition = t['WHEN']['NEXT_COMMAND']
+                # How do I logic? Triggers can support logical AND
+                # expressions. Implement that here.
+                if len(t['WHEN']) > 1:
+                    out.debug("Boolean AND detected for trigger condition: %s" % t['WHEN'])
+                    passed = True
+                    for when_expr, expected in t['WHEN'].iteritems():
+                        # 'when_expr' is the NEXT_FOO type stuff
+                        # 'expected' is what the steps attribute must
+                        # match for the comparison to be true
+                        #
+                        # which attribute are we comparing expected against?
+                        step_attr = condition_map[when_expr]
+                        step_actual = getattr(step, step_attr)
+                        if step_actual != expected:
+                            out.debug("Evaluated steps %s attribute. Expected: %s, actual: %s" % (
+                                step_attr, expected,
+                                step_actual))
+                            passed = False
+                            break
 
-                if step.command == condition:
-                    insertions.append(i)
+                    # We have exited the compound WHEN comparison for-loop
+                    if not passed:
+                        out.debug("WHEN expression does not match for all conditions")
+                        # Skip to the next step
+                        continue
+                    else:
+                        insertions.append(i)
+
+                else:
+                    ######################################################
+                    # WHEN expression is simple
+                    condition = t['WHEN']['NEXT_COMMAND']
+                    if step.command == condition:
+                        insertions.append(i)
 
             # Inserting into a list will increment the index of all
             # later insertions by 1 * num_insertions. Record number of
@@ -282,6 +320,9 @@ class Trigger(Step):
         self._step_name = "{CMD}:{SUB}".format(CMD=self._command, SUB=self._subcommand)
 
     def to_step(self):
-        return {
-            self.step_name: self._step['PARAMETERS']
-        }
+        if self._step['PARAMETERS'] == {}:
+            return self.step_name
+        else:
+            return {
+                self.step_name: self._step['PARAMETERS']
+            }
