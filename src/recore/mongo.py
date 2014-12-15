@@ -205,7 +205,7 @@ def insert_step_triggers(execution, pbid, triggers=[]):
     filter = recore.contextfilter.get_logger_filter(logname)
     filter.set_field("deploy_phase", "insert-triggers")
 
-    # Which attributes to compare dependingon WHEN criteria
+    # Which attributes to compare depending on WHEN criteria
     condition_map = {
         'NEXT_COMMAND': 'command',
         'NEXT_SUBCOMMAND': 'subcommand'
@@ -221,6 +221,7 @@ def insert_step_triggers(execution, pbid, triggers=[]):
         # Insert triggers into each execution sequence
         for t in triggers:
             _t = Trigger(t)
+            out.debug("Considering trigger with description: %s" % _t.description)
             # Record each index where a trigger needs to be
             # inserted. Begin by scanning all steps in this sequence
             insertions = []
@@ -228,8 +229,7 @@ def insert_step_triggers(execution, pbid, triggers=[]):
             for i in xrange(len(steps)):
                 step = Step(steps[i])
                 ######################################################
-                # How do I logic? Triggers can support logical AND
-                # expressions. Implement that here.
+                # Triggers support logical AND expressions
                 if len(t['WHEN']) > 1:
                     out.debug("Boolean AND detected for trigger condition: %s" % t['WHEN'])
                     passed = True
@@ -242,7 +242,7 @@ def insert_step_triggers(execution, pbid, triggers=[]):
                         step_attr = condition_map[when_expr]
                         step_actual = getattr(step, step_attr)
                         if step_actual != expected:
-                            out.debug("Evaluated steps %s attribute. Expected: %s, actual: %s" % (
+                            out.debug("WHEN expression does NOT MATCH for steps %s attribute. Expected: %s, actual: %s" % (
                                 step_attr, expected,
                                 step_actual))
                             passed = False
@@ -254,6 +254,7 @@ def insert_step_triggers(execution, pbid, triggers=[]):
                         # Skip to the next step
                         continue
                     else:
+                        out.debug("WHEN expression matched for all conditions")
                         insertions.append(i)
 
                 else:
@@ -261,6 +262,7 @@ def insert_step_triggers(execution, pbid, triggers=[]):
                     # WHEN expression is simple
                     condition = t['WHEN']['NEXT_COMMAND']
                     if step.command == condition:
+                        out.debug("WHEN expression matched for single condition")
                         insertions.append(i)
 
             # Inserting into a list will increment the index of all
@@ -269,6 +271,9 @@ def insert_step_triggers(execution, pbid, triggers=[]):
             increment = 0
             for insert in insertions:
                 steps.insert(insert + increment, _t.to_step())
+                out.debug("Inserted trigger '%s' at index %s" % (
+                    _t.description,
+                    i))
                 increment += 1
 
     return execution
@@ -280,12 +285,8 @@ class Step(object):
 
         if type(step) == str or \
            type(step) == unicode:
-            # self.app_logger.debug("Next step is a string. Split it and route it")
             (command, sep, subcommand) = step.partition(':')
-            parameters = {}
         else:
-            # It's a dictionary - may have notify/parameters/
-            # self.app_logger.debug("Next step has parameters to parse: %s" % step)
             _step_key = step.keys()[0]
             (command, sep, subcommand) = _step_key.partition(':')
 
@@ -318,6 +319,12 @@ class Trigger(Step):
         self._command = self._step['COMMAND']
         self._subcommand = self._step['SUBCOMMAND']
         self._step_name = "{CMD}:{SUB}".format(CMD=self._command, SUB=self._subcommand)
+        self._description = self._step['DESCRIPTION']
+
+    @property
+    def description(self):
+        """Return description of this trigger"""
+        return self._description
 
     def to_step(self):
         if self._step['PARAMETERS'] == {}:

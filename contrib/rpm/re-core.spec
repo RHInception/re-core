@@ -12,7 +12,7 @@
 Name: %{?scl_prefix}re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.7
-Release: 1%{?dist}
+Release: 2%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -69,6 +69,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Mon Dec 15 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.7-2
+- More logging statements/pep8/pyflakes
+
 * Mon Dec 15 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.7-1
 - Now with compound boolean AND trigger support
 

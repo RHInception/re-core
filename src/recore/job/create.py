@@ -61,7 +61,7 @@ instance with that document ID."""
             id = str(recore.mongo.initialize_state(mongo_db, playbook, dynamic))
             out.debug("State created for '%s' in mongo with id: %s" % (playbook, id))
         else:
-            out.error("Playbook %s does not exists in mongo" % playbook)
+            out.error("Playbook %s does not exist in mongo" % playbook)
             id = None
     except bson.errors.InvalidId:
         out.error("Invalid ObjectID given for lookup: %s" % str(playbook))
