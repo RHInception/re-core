@@ -63,6 +63,34 @@ def new_triggers():
 	}
     ]
 
+def new_triggers_two_triggers():
+    return [
+        {
+            "DESCRIPTION": "Sleep for a sec before frobbing the bigip",
+            "WHEN": {
+                "NEXT_COMMAND": "bigip"
+            },
+            "COMMAND": "sleep",
+            "SUBCOMMAND": "seconds",
+            "PARAMETERS": {
+                "seconds": 1
+            }
+	},
+        {
+            "DESCRIPTION": "Sleep for a sec before frobbing",
+            "WHEN": {
+                "NEXT_COMMAND": "frob"
+            },
+            "COMMAND": "sleep",
+            "SUBCOMMAND": "seconds",
+            "PARAMETERS": {
+                "seconds": 1
+            }
+	}
+    ]
+
+
+
 def new_playbook():
     return {
         "group": "testgroup",
@@ -72,6 +100,22 @@ def new_playbook():
         ]
     }
 
+
+def new_triggers_not_loaded():
+    return [
+        {
+            "DESCRIPTION": "Sleep for a sec before CURLing",
+            "WHEN": {
+                "NEXT_COMMAND": "notinplaybook"
+            },
+            "COMMAND": "sleep",
+            "SUBCOMMAND": "seconds",
+            "PARAMETERS": {
+                "seconds": 1
+            }
+	}
+
+]
 
 class TestMongo(TestCase):
 
@@ -159,7 +203,6 @@ class TestMongo(TestCase):
                 filter.get_field = get_field
                 logger_filter.return_value = filter
 
-                # Ok, carry on
                 mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
                 db['state'].insert.assert_called_once_with({
                     'executed': [],
@@ -206,9 +249,9 @@ class TestMongo(TestCase):
     ##################################################################
     # Step triggers be here. yarrrrrrrr
     @mock.patch('recore.contextfilter.get_logger_filter')
-    def test_initialize_state_with_triggers(self, logger_filter):
+    def test_initialize_state_with_one_trigger(self, logger_filter):
         """
-        NEXT_COMMAND triggers are loaded in correct order
+        NEXT_COMMAND trigger loads with just one
         """
         recore.fsm.TRIGGERS = new_triggers()
         db = mock.MagicMock()
@@ -236,7 +279,6 @@ class TestMongo(TestCase):
             filter.get_field = get_field
             logger_filter.return_value = filter
 
-            # Ok, carry on
             mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
             db['state'].insert.assert_called_once_with({
                 'executed': [],
@@ -250,6 +292,124 @@ class TestMongo(TestCase):
                 {
                     'steps': [
                         {'sleep:seconds': {'seconds': 1}},
+                        'bigip:OutOfRotation',
+                        {'misc:Echo': {'input': 'This is a test message'}},
+                        {'frob:Nicate': {'things': 'all the things'}}
+                    ],
+                    'completed_steps': [],
+                    'hosts': ['bar.ops.example.com'],
+                    'description': 'frobnicate these lil guys'
+                },
+                'ended': None,
+                'active_step': None,
+                'reply_to': None,
+                'execution': [],
+                'playbook_id': PLAYBOOK_ID
+            })
+
+    @mock.patch('recore.contextfilter.get_logger_filter')
+    def test_initialize_state_with_multiple_triggers(self, logger_filter):
+        """
+        NEXT_COMMAND trigger loads multiple triggers
+        """
+        recore.fsm.TRIGGERS = new_triggers_two_triggers()
+        db = mock.MagicMock()
+        collection = mock.MagicMock()
+        collection.insert = mock.MagicMock(return_value=12345)
+        db.__getitem__.return_value = collection
+        group = 'testgroup'
+        user_id = 'justabro'
+
+        with nested(
+                mock.patch('recore.mongo.lookup_playbook'),
+                mock.patch('recore.mongo.datetime.datetime')
+        ) as (mongo.lookup_playbook,
+              mongo.datetime.datetime):
+            mongo.lookup_playbook = mock.MagicMock()
+            PLAYBOOK_ID = 1234567
+            mongo.lookup_playbook.return_value = new_playbook()
+
+            mongo.datetime.datetime = mock.MagicMock('datetime')
+            mongo.datetime.datetime.utcnow = mock.MagicMock(
+                return_value=UTCNOW)
+
+            get_field = mock.Mock(return_value=user_id)
+            filter = mock.Mock()
+            filter.get_field = get_field
+            logger_filter.return_value = filter
+
+            mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
+            db['state'].insert.assert_called_once_with({
+                'executed': [],
+                'group': group,
+                'user_id': user_id,
+                'failed': False,
+                'created': UTCNOW,
+                'dynamic': {},
+                'triggers': [],
+                'active_sequence':
+                {
+                    'steps': [
+                        {'sleep:seconds': {'seconds': 1}},
+                        'bigip:OutOfRotation',
+                        {'misc:Echo': {'input': 'This is a test message'}},
+                        {'sleep:seconds': {'seconds': 1}},
+                        {'frob:Nicate': {'things': 'all the things'}}
+                    ],
+                    'completed_steps': [],
+                    'hosts': ['bar.ops.example.com'],
+                    'description': 'frobnicate these lil guys'
+                },
+                'ended': None,
+                'active_step': None,
+                'reply_to': None,
+                'execution': [],
+                'playbook_id': PLAYBOOK_ID
+            })
+
+    @mock.patch('recore.contextfilter.get_logger_filter')
+    def test_initialize_state_with_triggers_lot_loaded(self, logger_filter):
+        """
+        NEXT_COMMAND doesn't load triggers if WHEN doesn't match
+        """
+        recore.fsm.TRIGGERS = new_triggers_not_loaded()
+        db = mock.MagicMock()
+        collection = mock.MagicMock()
+        collection.insert = mock.MagicMock(return_value=12345)
+        db.__getitem__.return_value = collection
+        group = 'testgroup'
+        user_id = 'justabro'
+
+        with nested(
+                mock.patch('recore.mongo.lookup_playbook'),
+                mock.patch('recore.mongo.datetime.datetime')
+        ) as (mongo.lookup_playbook,
+              mongo.datetime.datetime):
+            mongo.lookup_playbook = mock.MagicMock()
+            PLAYBOOK_ID = 1234567
+            mongo.lookup_playbook.return_value = new_playbook()
+
+            mongo.datetime.datetime = mock.MagicMock('datetime')
+            mongo.datetime.datetime.utcnow = mock.MagicMock(
+                return_value=UTCNOW)
+
+            get_field = mock.Mock(return_value=user_id)
+            filter = mock.Mock()
+            filter.get_field = get_field
+            logger_filter.return_value = filter
+
+            mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
+            db['state'].insert.assert_called_once_with({
+                'executed': [],
+                'group': group,
+                'user_id': user_id,
+                'failed': False,
+                'created': UTCNOW,
+                'dynamic': {},
+                'triggers': [],
+                'active_sequence':
+                {
+                    'steps': [
                         'bigip:OutOfRotation',
                         {'misc:Echo': {'input': 'This is a test message'}},
                         {'frob:Nicate': {'things': 'all the things'}}

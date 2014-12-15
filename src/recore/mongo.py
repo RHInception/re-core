@@ -208,6 +208,7 @@ def insert_step_triggers(execution, triggers=[]):
             insertions = []
             for i in xrange(len(sequence['steps'])):
                 step = Step(sequence['steps'][i])
+                ######################################################
                 # Do the needful for each 'NEXT_COMMAND'
                 condition = t['WHEN']['NEXT_COMMAND']
 
@@ -274,6 +275,3 @@ class Trigger(Step):
         return {
             self.step_name: self._step['PARAMETERS']
         }
-
-    # def __repr__(self):
-    #     return str(self.to_step())
