@@ -23,6 +23,7 @@ import datetime
 import logging
 import recore.constants
 import recore.contextfilter
+import recore.fsm
 import recore.utils
 
 connection = None
@@ -123,7 +124,7 @@ def initialize_state(d, pbid, dynamic={}):
     _playbook = lookup_playbook(d, pbid)
 
     # Insert triggers
-    _playbook['execution'] = insert_step_triggers(_playbook['execution'])
+    _playbook['execution'] = insert_step_triggers(_playbook['execution'], recore.fsm.TRIGGERS)
 
     # Expand sequences = duplicate sequences for each host in the
     # sequence. Set hosts to just that one host.
@@ -193,6 +194,86 @@ def expand_sequences(execution):
     return expanded_sequences
 
 
-def insert_step_triggers(execution):
-    """Insert the step triggers into the execution sequences"""
+def insert_step_triggers(execution, triggers=[]):
+    """Insert the step triggers into the execution sequences
+
+`triggers` - list of step triggers
+`execution` - an execution sequence"""
+    for sequence in execution:
+        # Insert triggers into each execution sequence
+        for t in triggers:
+            _t = Trigger(t)
+            # Record each index where a trigger needs to be
+            # inserted. Begin by scanning all steps in this sequence
+            insertions = []
+            for i in xrange(len(sequence['steps'])):
+                step = Step(sequence['steps'][i])
+                # Do the needful for each 'NEXT_COMMAND'
+                condition = t['WHEN']['NEXT_COMMAND']
+
+                if step.command == condition:
+                    insertions.append(i)
+
+            # Inserting into a list will increment the index of all
+            # later insertions by 1 * num_insertions. Record number of
+            # insertions so we can add that to the index later
+            increment = 0
+            for insert in insertions:
+                sequence['steps'].insert(insert + increment, _t.to_step())
+                increment += 1
+
     return execution
+
+
+class Step(object):
+    def __init__(self, step):
+        self._step = step
+
+        if type(step) == str or \
+           type(step) == unicode:
+            # self.app_logger.debug("Next step is a string. Split it and route it")
+            (command, sep, subcommand) = step.partition(':')
+            parameters = {}
+        else:
+            # It's a dictionary - may have notify/parameters/
+            # self.app_logger.debug("Next step has parameters to parse: %s" % step)
+            _step_key = step.keys()[0]
+            (command, sep, subcommand) = _step_key.partition(':')
+
+        self._step_name = "{CMD}:{SUB}".format(CMD=command, SUB=subcommand)
+        self._command = command
+        self._subcommand = subcommand
+
+    @property
+    def step_name(self):
+        """Return name of this step"""
+        return self._step_name
+
+    @property
+    def command(self):
+        """Return command of this step"""
+        return self._command
+
+    @property
+    def subcommand(self):
+        """Return subcommand of this step"""
+        return self._subcommand
+
+    def __str__(self):
+        return self.step_name
+
+
+class Trigger(Step):
+    def __init__(self, *args, **kwargs):
+        super(Trigger, self).__init__(*args, **kwargs)
+        self._command = self._step['COMMAND']
+        self._subcommand = self._step['SUBCOMMAND']
+        self._step_name = "{CMD}:{SUB}".format(CMD=self._command, SUB=self._subcommand)
+
+    def to_step(self):
+        return {
+            self.step_name: self._step['PARAMETERS']
+        }
+
+    # def __repr__(self):
+    #     return str(self.to_step())

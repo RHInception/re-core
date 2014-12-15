@@ -86,9 +86,8 @@ def parse_config(args):
             try:
                 triggers = recore.utils.parse_config_file(
                     os.path.realpath(args.triggers))
-                recore.fsm.FSM.triggers = triggers
+                recore.fsm.TRIGGERS = triggers
                 notify.debug("Evaluated triggers: %s" % str(triggers))
-                print recore.fsm.FSM.triggers
             except Exception, e:
                 notify.error("Couldn't parse triggers in {TRIGGER_FILE}. Error: {ERROR}".format(
                     TRIGGER_FILE=args.triggers,
@@ -99,7 +98,7 @@ def parse_config(args):
             try:
                 triggers = recore.utils.parse_config_file(
                     os.path.realpath(config['TRIGGERS']))
-                recore.fsm.FSM.triggers = triggers
+                recore.fsm.TRIGGERS = triggers
                 notify.debug("Evaluated triggers: %s" % str(triggers))
             except Exception, e:
                 notify.error("Couldn't parse triggers in {TRIGGER_FILE}. Error: {ERROR}".format(

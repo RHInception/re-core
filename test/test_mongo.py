@@ -17,11 +17,12 @@ import bson
 import pymongo
 import datetime
 import mock
+from contextlib import nested
 
 from . import TestCase, unittest
 
 from recore import mongo
-
+import recore.fsm
 
 # Mocks
 UTCNOW = datetime.datetime.utcnow()
@@ -209,6 +210,7 @@ class TestMongo(TestCase):
         """
         NEXT_COMMAND triggers are loaded in correct order
         """
+        recore.fsm.TRIGGERS = new_triggers()
         db = mock.MagicMock()
         collection = mock.MagicMock()
         collection.insert = mock.MagicMock(return_value=12345)
@@ -216,47 +218,49 @@ class TestMongo(TestCase):
         group = 'testgroup'
         user_id = 'justabro'
 
-        with mock.patch('recore.mongo.lookup_playbook') as (
-                mongo.lookup_playbook):
+        with nested(
+                mock.patch('recore.mongo.lookup_playbook'),
+                mock.patch('recore.mongo.datetime.datetime')
+        ) as (mongo.lookup_playbook,
+              mongo.datetime.datetime):
             mongo.lookup_playbook = mock.MagicMock()
             PLAYBOOK_ID = 1234567
             mongo.lookup_playbook.return_value = new_playbook()
 
-            with mock.patch('recore.mongo.datetime.datetime') as (
-                    mongo.datetime.datetime):
-                mongo.datetime.datetime = mock.MagicMock('datetime')
-                mongo.datetime.datetime.utcnow = mock.MagicMock(
-                    return_value=UTCNOW)
+            mongo.datetime.datetime = mock.MagicMock('datetime')
+            mongo.datetime.datetime.utcnow = mock.MagicMock(
+                return_value=UTCNOW)
 
-                get_field = mock.Mock(return_value=user_id)
-                filter = mock.Mock()
-                filter.get_field = get_field
-                logger_filter.return_value = filter
+            get_field = mock.Mock(return_value=user_id)
+            filter = mock.Mock()
+            filter.get_field = get_field
+            logger_filter.return_value = filter
 
-                # Ok, carry on
-                mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
-                db['state'].insert.assert_called_once_with({
-                    'executed': [],
-                    'group': group,
-                    'user_id': user_id,
-                    'failed': False,
-                    'created': UTCNOW,
-                    'dynamic': {},
-                    'triggers': [],
-                    'active_sequence':
-                    {
-                        'steps': [
-                                'bigip:OutOfRotation',
-                            {'misc:Echo': {'input': 'This is a test message'}},
-                            {'frob:Nicate': {'things': 'all the things'}}
-                        ],
-                        'completed_steps': [],
-                        'hosts': ['bar.ops.example.com'],
-                        'description': 'frobnicate these lil guys'
-                    },
-                    'ended': None,
-                    'active_step': None,
-                    'reply_to': None,
-                        'execution': [],
-                    'playbook_id': PLAYBOOK_ID
-                })
+            # Ok, carry on
+            mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
+            db['state'].insert.assert_called_once_with({
+                'executed': [],
+                'group': group,
+                'user_id': user_id,
+                'failed': False,
+                'created': UTCNOW,
+                'dynamic': {},
+                'triggers': [],
+                'active_sequence':
+                {
+                    'steps': [
+                        {'sleep:seconds': {'seconds': 1}},
+                        'bigip:OutOfRotation',
+                        {'misc:Echo': {'input': 'This is a test message'}},
+                        {'frob:Nicate': {'things': 'all the things'}}
+                    ],
+                    'completed_steps': [],
+                    'hosts': ['bar.ops.example.com'],
+                    'description': 'frobnicate these lil guys'
+                },
+                'ended': None,
+                'active_step': None,
+                'reply_to': None,
+                'execution': [],
+                'playbook_id': PLAYBOOK_ID
+            })

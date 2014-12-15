@@ -99,7 +99,7 @@ class TestRecoreInit(TestCase):
     def test_parse_config_triggers_good(self):
         """We can configure the FSM with triggers when they're defined"""
         cfg = recore.parse_config(self.config_file_good_triggers)
-        assert recore.fsm.FSM.triggers != []
+        assert recore.fsm.TRIGGERS != []
 
     def test_parse_config_triggers_invalid_json(self):
         """We gracefully exit if a trigger file is invalid"""
