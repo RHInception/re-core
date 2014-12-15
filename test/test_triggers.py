@@ -24,17 +24,6 @@ class TestTriggers(TestCase):
             self.triggers = json.load(f)['STEP_TRIGGERS']
 
     def test_new_Trigger(self):
-        # trigger = {
-        #     "DESCRIPTION": "Sleep for a sec before CURLing",
-        #     "WHEN": {
-        #         "NEXT_COMMAND": "httprequest"
-        #     },
-        #     "COMMAND": "sleep",
-        #     "SUBCOMMAND": "seconds",
-        #     "PARAMETERS": {
-        #         "seconds": 1
-        #     }
-	# }
         for trigger in self.triggers:
             t = recore.mongo.Trigger(trigger)
             self.assertEqual(t.step_name, "sleep:seconds")

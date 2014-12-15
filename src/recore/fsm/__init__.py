@@ -603,9 +603,9 @@ Returns `None` if no action was required. Else, returns `True`
         self.state_coll = self.db['state']
 
         if not self.initialized:
-            self.app_logger.info("Initializing FSM")
             # FSM just spun up, do those misc. one-time things
             self.filter.set_field("deploy_phase", "initialization")
+            self.app_logger.info("Initializing FSM")
             self.app_logger.info("Running first time tasks as part of initialization")
             if not self._first_run():
                 self.filter.set_field('deploy_phase', 'error-state-cleanup')

@@ -124,7 +124,7 @@ def initialize_state(d, pbid, dynamic={}):
     _playbook = lookup_playbook(d, pbid)
 
     # Insert triggers
-    _playbook['execution'] = insert_step_triggers(_playbook['execution'], recore.fsm.TRIGGERS)
+    _playbook['execution'] = insert_step_triggers(_playbook['execution'], pbid, recore.fsm.TRIGGERS)
 
     # Expand sequences = duplicate sequences for each host in the
     # sequence. Set hosts to just that one host.
@@ -145,7 +145,8 @@ def initialize_state(d, pbid, dynamic={}):
         'dynamic': dynamic,
         'execution': _playbook['execution'],
         'executed': [],
-        'active_sequence': _active_sequence
+        'active_sequence': _active_sequence,
+        'triggers': recore.fsm.TRIGGERS
     })
 
     try:
@@ -194,11 +195,19 @@ def expand_sequences(execution):
     return expanded_sequences
 
 
-def insert_step_triggers(execution, triggers=[]):
+def insert_step_triggers(execution, pbid, triggers=[]):
     """Insert the step triggers into the execution sequences
 
 `triggers` - list of step triggers
 `execution` - an execution sequence"""
+    logname = 'recore.playbook.' + str(pbid)
+    out = logging.getLogger(logname)
+    if triggers:
+        out.debug("Inserting %s step triggers" % len(triggers))
+    else:
+        out.debug("No step triggers to insert")
+        return execution
+
     for sequence in execution:
         # Insert triggers into each execution sequence
         for t in triggers:
@@ -206,8 +215,9 @@ def insert_step_triggers(execution, triggers=[]):
             # Record each index where a trigger needs to be
             # inserted. Begin by scanning all steps in this sequence
             insertions = []
-            for i in xrange(len(sequence['steps'])):
-                step = Step(sequence['steps'][i])
+            steps = sequence['steps']
+            for i in xrange(len(steps)):
+                step = Step(steps[i])
                 ######################################################
                 # Do the needful for each 'NEXT_COMMAND'
                 condition = t['WHEN']['NEXT_COMMAND']
@@ -220,7 +230,7 @@ def insert_step_triggers(execution, triggers=[]):
             # insertions so we can add that to the index later
             increment = 0
             for insert in insertions:
-                sequence['steps'].insert(insert + increment, _t.to_step())
+                steps.insert(insert + increment, _t.to_step())
                 increment += 1
 
     return execution

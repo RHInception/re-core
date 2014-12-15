@@ -287,7 +287,7 @@ class TestMongo(TestCase):
                 'failed': False,
                 'created': UTCNOW,
                 'dynamic': {},
-                'triggers': [],
+                'triggers': new_triggers(),
                 'active_sequence':
                 {
                     'steps': [
@@ -346,7 +346,7 @@ class TestMongo(TestCase):
                 'failed': False,
                 'created': UTCNOW,
                 'dynamic': {},
-                'triggers': [],
+                'triggers': new_triggers_two_triggers(),
                 'active_sequence':
                 {
                     'steps': [
@@ -406,7 +406,7 @@ class TestMongo(TestCase):
                 'failed': False,
                 'created': UTCNOW,
                 'dynamic': {},
-                'triggers': [],
+                'triggers': new_triggers_not_loaded(),
                 'active_sequence':
                 {
                     'steps': [
