@@ -47,6 +47,21 @@ def new_active_sequence():
     }
 
 
+def new_triggers():
+    return [
+        {
+            "DESCRIPTION": "Sleep for a sec before CURLing",
+            "WHEN": {
+                "NEXT_COMMAND": "bigip"
+            },
+            "COMMAND": "sleep",
+            "SUBCOMMAND": "seconds",
+            "PARAMETERS": {
+                "seconds": 1
+            }
+	}
+    ]
+
 def new_playbook():
     return {
         "group": "testgroup",
@@ -186,3 +201,62 @@ class TestMongo(TestCase):
         # We should get a PyMongoError
         self.assertRaises(
             pymongo.errors.PyMongoError, mongo.initialize_state, db, playbook)
+
+    ##################################################################
+    # Step triggers be here. yarrrrrrrr
+    @mock.patch('recore.contextfilter.get_logger_filter')
+    def test_initialize_state_with_triggers(self, logger_filter):
+        """
+        NEXT_COMMAND triggers are loaded in correct order
+        """
+        db = mock.MagicMock()
+        collection = mock.MagicMock()
+        collection.insert = mock.MagicMock(return_value=12345)
+        db.__getitem__.return_value = collection
+        group = 'testgroup'
+        user_id = 'justabro'
+
+        with mock.patch('recore.mongo.lookup_playbook') as (
+                mongo.lookup_playbook):
+            mongo.lookup_playbook = mock.MagicMock()
+            PLAYBOOK_ID = 1234567
+            mongo.lookup_playbook.return_value = new_playbook()
+
+            with mock.patch('recore.mongo.datetime.datetime') as (
+                    mongo.datetime.datetime):
+                mongo.datetime.datetime = mock.MagicMock('datetime')
+                mongo.datetime.datetime.utcnow = mock.MagicMock(
+                    return_value=UTCNOW)
+
+                get_field = mock.Mock(return_value=user_id)
+                filter = mock.Mock()
+                filter.get_field = get_field
+                logger_filter.return_value = filter
+
+                # Ok, carry on
+                mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
+                db['state'].insert.assert_called_once_with({
+                    'executed': [],
+                    'group': group,
+                    'user_id': user_id,
+                    'failed': False,
+                    'created': UTCNOW,
+                    'dynamic': {},
+                    'triggers': [],
+                    'active_sequence':
+                    {
+                        'steps': [
+                                'bigip:OutOfRotation',
+                            {'misc:Echo': {'input': 'This is a test message'}},
+                            {'frob:Nicate': {'things': 'all the things'}}
+                        ],
+                        'completed_steps': [],
+                        'hosts': ['bar.ops.example.com'],
+                        'description': 'frobnicate these lil guys'
+                    },
+                    'ended': None,
+                    'active_step': None,
+                    'reply_to': None,
+                        'execution': [],
+                    'playbook_id': PLAYBOOK_ID
+                })

@@ -122,6 +122,9 @@ def initialize_state(d, pbid, dynamic={}):
     # Look up the to-release playbook
     _playbook = lookup_playbook(d, pbid)
 
+    # Insert triggers
+    _playbook['execution'] = insert_step_triggers(_playbook['execution'])
+
     # Expand sequences = duplicate sequences for each host in the
     # sequence. Set hosts to just that one host.
     _playbook['execution'] = expand_sequences(_playbook['execution'])
@@ -188,3 +191,8 @@ def expand_sequences(execution):
             _new_sequence['hosts'] = [host]
             expanded_sequences.append(_new_sequence)
     return expanded_sequences
+
+
+def insert_step_triggers(execution):
+    """Insert the step triggers into the execution sequences"""
+    return execution
