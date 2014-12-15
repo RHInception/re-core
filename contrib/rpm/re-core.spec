@@ -11,8 +11,8 @@
 
 Name: %{?scl_prefix}re-core
 Summary: FSM of the Inception Release Engine
-Version: 0.0.6
-Release: 9%{?dist}
+Version: 0.0.7
+Release: 0%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -69,6 +69,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Mon Dec 15 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.7-0
+- Now with basic step trigger functionality.
+
 * Mon Dec 08 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.6-9
 - One more try with SCL
 
