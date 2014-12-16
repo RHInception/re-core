@@ -25,7 +25,7 @@ class TestTriggers(TestCase):
 
     def test_new_Trigger(self):
         for trigger in self.triggers:
-            t = recore.mongo.Trigger(trigger)
+            t = recore.mongo.Trigger(trigger, '123456789abcdefg')
             self.assertEqual(t.step_name, "sleep:seconds")
             self.assertEqual(t.command, 'sleep')
             self.assertEqual(t.subcommand, 'seconds')

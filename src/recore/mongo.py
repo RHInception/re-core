@@ -220,14 +220,14 @@ def insert_step_triggers(execution, pbid, triggers=[]):
     for sequence in execution:
         # Insert triggers into each execution sequence
         for t in triggers:
-            _t = Trigger(t)
+            _t = Trigger(t, pbid)
             out.debug("Considering trigger with description: %s" % _t.description)
             # Record each index where a trigger needs to be
             # inserted. Begin by scanning all steps in this sequence
             insertions = []
             steps = sequence['steps']
             for i in xrange(len(steps)):
-                step = Step(steps[i])
+                step = Step(steps[i], pbid)
                 ######################################################
                 # Triggers support logical AND expressions
                 if len(t['WHEN']) > 1:
@@ -280,7 +280,11 @@ def insert_step_triggers(execution, pbid, triggers=[]):
 
 
 class Step(object):
-    def __init__(self, step):
+    def __init__(self, step, pbid):
+        logname = 'recore.playbook.' + str(pbid)
+        self.out = logging.getLogger(logname)
+        self.out.debug("Creating intermediate step/trigger object with definition: %s" % step)
+
         self._step = step
 
         if type(step) == str or \

@@ -20,7 +20,7 @@ import recore.mongo
 class TestSteps(TestCase):
     def test_new_Step_simple(self):
         step = "frob:Nicate"
-        s = recore.mongo.Step(step)
+        s = recore.mongo.Step(step, '123456789abcdefg')
         self.assertEqual(s.step_name, "frob:Nicate")
         self.assertEqual(s.command, 'frob')
         self.assertEqual(s.subcommand, 'Nicate')
@@ -33,7 +33,7 @@ class TestSteps(TestCase):
             }
         }
 
-        s = recore.mongo.Step(step)
+        s = recore.mongo.Step(step, '123456789abcdefg')
         self.assertEqual(s.step_name, "frob:Nicate")
         self.assertEqual(s.command, 'frob')
         self.assertEqual(s.subcommand, 'Nicate')
