@@ -12,7 +12,7 @@
 Name: %{?scl_prefix}re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.7
-Release: 2%{?dist}
+Release: 3%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -69,6 +69,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Tue Dec 16 2014 Steve Milner <stevem@gnulinux.net> - 0.0.7-3
+- Fixed two minor bugs.
+
 * Mon Dec 15 2014 Tim Bielawa <tbielawa@redhat.com> - 0.0.7-2
 - More logging statements/pep8/pyflakes
 

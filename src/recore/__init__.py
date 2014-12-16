@@ -81,7 +81,7 @@ def parse_config(args):
         recore.amqp.MQ_CONF = config['MQ']
 
         # Any trigger provided on the CLI? That overrides config file
-        if 'triggers' in args:
+        if 'triggers' in args and args.triggers:
             notify.debug("Evaluating discovered triggers in CLI options")
             try:
                 triggers = recore.utils.parse_config_file(
