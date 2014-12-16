@@ -18,5 +18,5 @@
 import argparse
 import recore.parser
 
-recore.parser.args.func(args)
+recore.parser.args.func(recore.parser.args)
 
