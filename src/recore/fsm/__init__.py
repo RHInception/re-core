@@ -185,6 +185,7 @@ a playbooks's release steps."""
             self.app_logger.error("Failure/error update received from worker")
             self.failed = True
             self.move_remaining_to_skipped()
+            self._run()
 
     def move_active_to_completed(self):
         finished_step = self.active_step

@@ -678,7 +678,6 @@ class TestFsm(TestCase):
 
         result = f.on_ended(f.ch, *consume_errored)
         f.move_remaining_to_skipped.assert_called_once_with()
-        assert not f._run.called
         self.assertFalse(f.move_active_to_completed.called)
         self.assertFalse(result)
 
@@ -777,9 +776,11 @@ Tests for the case where only one notification transport (irc, email, etc) is de
         self.assertEqual(send_notification.call_args[0][3], ['#achannel'])
         self.assertEqual(send_notification.call_args[0][4], 'completed')
 
+    @mock.patch.object(FSM, 'update_state')
+    @mock.patch.object(FSM, '_setup')
     @mock.patch.object(FSM, 'move_remaining_to_skipped')
     @mock.patch('recore.fsm.recore.amqp.send_notification')
-    def test_step_notification_failed(self, send_notification, move_remaining):
+    def test_step_notification_failed(self, send_notification, move_remaining, setup, updatestate):
         """Per-step notifications work when a step fails
 
 Tests for the case where only one notification transport (irc, email, etc) is defined"""
@@ -797,6 +798,10 @@ Tests for the case where only one notification transport (irc, email, etc) is de
         # attributes/variables because we're skipping the usual
         # initialization steps.
         f.conn = mock.Mock(pika.connection.Connection)
+        f.executed = []
+        f.execution = []
+        f.state_coll = {}
+        f.post_deploy_action = []
         publish = mock.Mock()
         channel = mock.Mock()
         channel.consume.return_value = iter(consume_iter)
@@ -806,6 +811,9 @@ Tests for the case where only one notification transport (irc, email, etc) is de
         f.group = 'testgroup'
         f.dynamic = {}
         f.active_step = new_notify_step('failed')
+        set_field = mock.MagicMock()
+        filter = mock.MagicMock(return_value=set_field)
+        f.filter = filter
 
         # Run the ended method with a body having 'status' as failed
         f.on_ended(channel,
