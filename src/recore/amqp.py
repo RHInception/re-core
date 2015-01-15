@@ -21,6 +21,7 @@ import time
 import pika
 import recore.fsm
 import recore.contextfilter
+import recore.mongo
 import recore.job.create
 import signal
 import threading
@@ -437,10 +438,13 @@ def receive(ch, method, properties, body):
     """
     try:
         msg = json.loads(body)
-        logname = 'recore.playbook.' + str(msg['playbook_id'])
+        mongo_db = recore.mongo.database
+        dpid = recore.mongo.create_state_document(mongo_db)
+        logname = 'recore.deployment.' + str(dpid)
         out = logging.getLogger(logname)
         context_filter = recore.contextfilter.ContextFilterUnique(logname)
         out.addFilter(context_filter)
+        context_filter.set_field('deployment_id', dpid)
         context_filter.set_field('playbook_id', str(msg['playbook_id']))
         context_filter.set_field('source_ip', msg.get('source_ip', ''))
         context_filter.set_field('user_id', msg.get('user_id', ''))
@@ -468,7 +472,8 @@ def receive(ch, method, properties, body):
             # were passed a valid playbook id.
             id = recore.job.create.release(
                 ch, msg['playbook_id'], reply_to,
-                msg.get('dynamic', {}))
+                msg.get('dynamic', {}),
+                dpid)
         except KeyError, ke:
             out.error("Missing an expected key in message: %s" % ke)
             # FIXME: eating errors can be dangerous! Double check this is OK.
@@ -481,12 +486,16 @@ def receive(ch, method, properties, body):
             runner.start()
             signal.signal(signal.SIGINT, sighandler)
     else:
-        out.warn("Unknown routing key %s. Doing nothing ...")
+        id = None
+        out.warn("Unknown routing key %s. Doing nothing ..." % topic)
 
     # Subtract one to account for the main thread
     fsm_alive = threading.active_count() - 1
 
     out.debug("End receive() routine - Running FSM threads: %s" % fsm_alive)
+
+    if id is None:
+        del logging.Logger.manager.loggerDict['recore.deployment.' + str(dpid)]
 
 
 def sighandler(signal, frame):

@@ -51,7 +51,7 @@ a playbooks's release steps."""
         self.conn = None
         self.state_id = state_id
         self.playbook_id = playbook_id
-        _pb_logger = 'recore.playbook.' + playbook_id
+        _pb_logger = 'recore.deployment.' + state_id
         self.filter = recore.contextfilter.get_logger_filter(_pb_logger)
         self._id = {'_id': ObjectId(self.state_id)}
         self.initialized = False
@@ -505,6 +505,7 @@ Returns `None` if no action was required. Else, returns `True`
         else:
             self.app_logger.debug("Cleaned up all leftovers. We should terminate next")
         self.app_logger.debug("Finished cleanup routine")
+        del logging.Logger.manager.loggerDict['recore.deployment.' + str(self.state_id)]
 
     def _connect_mq(self):
         self.app_logger.debug("Opening AMQP connection for release with id: %s" % self.state_id)
@@ -895,11 +896,11 @@ Params:
 """
         # re-use the pre-deployment 'recore.playbook.PBID' logger
         # filter because it has all the field information already
-        pb_logger = 'recore.playbook.' + playbook_id
+        pb_logger = 'recore.deployment.' + state_id
         filter = recore.contextfilter.get_logger_filter(pb_logger)
 
         # This is our actual logger object
-        deploy_logger = logging.getLogger(pb_logger + '.deployment')
+        deploy_logger = logging.getLogger(pb_logger)
         deploy_logger.addFilter(filter)
         # Log at the same threshold that the main application logs at
         deploy_logger.setLevel(logging.getLogger('recore').getEffectiveLevel())

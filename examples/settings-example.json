@@ -1,58 +1,24 @@
 {
+    "LOGLEVEL": "DEBUG",
     "LOGFILE": "recore.log",
-    "RELEASE_LOG_DIR": null,
-    "TRIGGERS": "examples/triggers/triggers.trigger.json",
+    "RELEASE_LOG_DIR": "/tmp/fsm",
     "MQ": {
-        "SERVER": "amqp.example.com",
-        "NAME": "username",
-        "PASSWORD": "password",
-        "EXCHANGE": "my_exchange",
-        "QUEUE": "re",
+        "SERVER": "localhost",
+        "NAME": "core-dev",
+        "PASSWORD": "blu3h@t",
+        "EXCHANGE": "re",
+        "QUEUE": "fsm",
         "VHOST": "/",
-        "PORT": 5671,
-        "SSL": true
+        "PORT": 5672
     },
     "DB": {
         "SERVERS": [
-            "mongo01.example.com",
-            "mongo02.example.com"
+            "localhost"
         ],
         "DATABASE": "re",
-        "NAME": "lordmongo",
-        "PASSWORD": "webscale",
-        "PORT": 27017
-    },
-    "PHASE_NOTIFICATION": {
-        "TABOOT_URL":  "http://example.com/taboot/%s/",
-        "TOPIC": "notify.irc" ,
-        "TARGET": ["#achannel", "someperson"]
-    },
-    "PRE_DEPLOY_CHECK": [
-        {
-            "NAME": "Require Change Record",
-            "COMMAND": "servicenow",
-            "SUBCOMMAND": "getchangerecord",
-            "PARAMETERS": {
-                "project": "myproject",
-                "some_filter": "to find the record"
-            },
-            "EXPECTATION": {
-                "status": "completed",
-                "data": {
-                    "exists": true
-                }
-            }
-        }
-    ],
-    "POST_DEPLOY_ACTION": [
-        {
-            "NAME": "Update Change Record",
-            "COMMAND": "servicenow",
-            "SUBCOMMAND": "updatechgrecord",
-            "PARAMETERS": {
-                "project": "myproject",
-                "some_filter": "to find the record"
-            }
-        }
-    ]
+        "NAME": "core-dev",
+        "PASSWORD": "r3dh@t",
+        "PORT": 27017,
+	"SSL": "false"
+    }
 }

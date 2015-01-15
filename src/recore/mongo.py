@@ -60,12 +60,12 @@ def connect(host, port, user, password, db, ssl):
     return (connection, db)
 
 
-def lookup_playbook(d, pbid):
+def lookup_playbook(d, pbid, dpid):
     """Given a mongodb database, `d`, search the 'playbooks' collection
-for a document with the given `pbid`. `search_result` is either a hash
+for a document with the given `dpid`. `search_result` is either a hash
 or `None` if no matches were found.
     """
-    out = logging.getLogger('recore.playbook.' + str(pbid))
+    out = logging.getLogger('recore.deployment.' + str(dpid))
     try:
         # TODO: make this a config var
         groups = d['playbooks']
@@ -87,7 +87,7 @@ or `None` if no matches were found.
 
 
 def lookup_state(c_id, pbid):
-    """`c_id` is a correlation ID corresponding to the ObjectID value in
+    """`c_id` is a correlation ID corresponding to the ObjectId value in
 MongoDB.
 
 pbid - the playbook id used for logging purposes
@@ -96,7 +96,7 @@ pbid - the playbook id used for logging purposes
     # pymongo.collection.Collection object pointing at the 'state'
     # collection
     states = database['state']
-    out = logging.getLogger('recore.playbook.' + str(pbid))
+    out = logging.getLogger('recore.deployment.' + str(c_id))
     out.debug("Looking up state for %s" % ObjectId(str(c_id)))
     # findOne state document with _id of `c_id`. If a document is
     # found, returns a hash, if no document is found, returns None
@@ -106,7 +106,7 @@ pbid - the playbook id used for logging purposes
     return project_state
 
 
-def initialize_state(d, pbid, dynamic={}):
+def initialize_state(d, pbid, dpid, dynamic={}):
     """Initialize the state of a given project release
 
 #. Lookup the playbook
@@ -116,15 +116,15 @@ def initialize_state(d, pbid, dynamic={}):
 #. Update the record with items specific to this playbook
 #. Insert the new state record
 #. Return the ID"""
-    logname = 'recore.playbook.' + str(pbid)
+    logname = 'recore.deployment.' + str(dpid)
     out = logging.getLogger(logname)
     filter = recore.contextfilter.get_logger_filter(logname)
 
     # Look up the to-release playbook
-    _playbook = lookup_playbook(d, pbid)
+    _playbook = lookup_playbook(d, pbid, dpid)
 
     # Insert triggers
-    _playbook['execution'] = insert_step_triggers(_playbook['execution'], pbid, recore.fsm.TRIGGERS)
+    _playbook['execution'] = insert_step_triggers(_playbook['execution'], pbid, dpid, recore.fsm.TRIGGERS)
 
     # Expand sequences = duplicate sequences for each host in the
     # sequence. Set hosts to just that one host.
@@ -150,16 +150,53 @@ def initialize_state(d, pbid, dynamic={}):
     })
 
     try:
-        id = d['state'].insert(state0)
-        filter.set_field('deployment_id', str(id))
-        out.debug("Added new state record with id: %s" % str(id))
+        d['state'].update(
+            {'_id': ObjectId(dpid)},
+            {
+                '$set': state0
+            }
+        )
+        out.debug("Updated state record with id: %s" % str(id))
         out.debug("New state record: %s" % state0)
     except pymongo.errors.PyMongoError, pmex:
         out.error(
             "Unable to save new state record %s. "
             "Propagating PyMongo error: %s" % (state0, pmex))
         raise pmex
+    return dpid
+
+
+def create_state_document(d):
+    """Create an empty state document so we have a deployment ID to begin
+    logging with
+    """
+    out = logging.getLogger('recore')
+    out.info("Creating empty state record for new deployment")
+
+    try:
+        id = d['state'].insert({})
+        out.debug("Added new state record with id: %s" % str(id))
+    except pymongo.errors.PyMongoError, pmex:
+        out.error(
+            "Unable to create new state record. "
+            "Propagating PyMongo error: %s" % (pmex))
+        raise pmex
     return id
+
+
+def delete_state_document(d, dpid):
+    """
+    Delete the state document ``dpid`` from database ``d``
+    """
+    try:
+        d['state'].remove({'_id': ObjectId(dpid)})
+        out.debug("Deleted state record with id: %s" % str(id))
+        return True
+    except pymongo.errors.PyMongoError, pmex:
+        out.error(
+            "Unable to delete state record %s. "
+            "Propagating PyMongo error: %s" % (dpid, pmex))
+        raise pmex
 
 
 def escape_credentials(n, p):
@@ -195,12 +232,12 @@ def expand_sequences(execution):
     return expanded_sequences
 
 
-def insert_step_triggers(execution, pbid, triggers=[]):
+def insert_step_triggers(execution, pbid, dpid, triggers=[]):
     """Insert the step triggers into the execution sequences
 
 `triggers` - list of step triggers
 `execution` - an execution sequence"""
-    logname = 'recore.playbook.' + str(pbid)
+    logname = 'recore.deployment.' + str(dpid)
     out = logging.getLogger(logname)
     filter = recore.contextfilter.get_logger_filter(logname)
     filter.set_field("deploy_phase", "insert-triggers")
@@ -220,14 +257,14 @@ def insert_step_triggers(execution, pbid, triggers=[]):
     for sequence in execution:
         # Insert triggers into each execution sequence
         for t in triggers:
-            _t = Trigger(t, pbid)
+            _t = Trigger(t, dpid)
             out.debug("Considering trigger with description: %s" % _t.description)
             # Record each index where a trigger needs to be
             # inserted. Begin by scanning all steps in this sequence
             insertions = []
             steps = sequence['steps']
             for i in xrange(len(steps)):
-                step = Step(steps[i], pbid)
+                step = Step(steps[i], dpid)
                 ######################################################
                 # Triggers support logical AND expressions
                 if len(t['WHEN']) > 1:
@@ -280,8 +317,8 @@ def insert_step_triggers(execution, pbid, triggers=[]):
 
 
 class Step(object):
-    def __init__(self, step, pbid):
-        logname = 'recore.playbook.' + str(pbid)
+    def __init__(self, step, dpid):
+        logname = 'recore.deployment.' + str(dpid)
         self.out = logging.getLogger(logname)
         self.out.debug("Creating intermediate step/trigger object with definition: %s" % step)
 

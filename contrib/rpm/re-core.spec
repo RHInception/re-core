@@ -11,8 +11,8 @@
 
 Name: %{?scl_prefix}re-core
 Summary: FSM of the Inception Release Engine
-Version: 0.0.8
-Release: 0%{?dist}
+Version: 0.0.9
+Release: 1%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -69,6 +69,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Thu Jan 15 2015 Tim Bielawa <tbielawa@redhat.com> - 0.0.9-1
+- Fix context filters getting misused and leaking memory. RE: DE7681
+
 * Tue Jan  6 2015 Tim Bielawa <tbielawa@redhat.com> - 0.0.8-0
 - Hopefully fix the FSM skipping cleanup tasks if a step fails. re: DE7629
 

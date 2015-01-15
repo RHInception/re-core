@@ -31,12 +31,13 @@ import logging
 import bson.errors
 
 
-def release(ch, playbook, reply_to, dynamic):
+def release(ch, playbook, reply_to, dynamic, dpid):
     """`ch` is an open AMQP channel
 
     `playbook` is the _id of a playbook to begin a release for.
     `reply_to` is a temporary channel
     `dynamic` is a dict storing dynamic input -- default is {}
+    `dpid` is the deployment state record ID
 
 Reference the playbook name against the database to retrieve a list of
 release steps to execute.
@@ -47,28 +48,28 @@ automatically generated '_id' property of this document.
 
 Once we have a state document we are ready to initialize another FSM
 instance with that document ID."""
-    out = logging.getLogger('recore.playbook.' + str(playbook))
-    out.debug("Checking mongo for info on playbook %s" % playbook)
+    out = logging.getLogger('recore.deployment.' + str(dpid))
     mongo_db = recore.mongo.database
 
     try:
-        playbook_exists = recore.mongo.lookup_playbook(mongo_db, playbook)
+        playbook_exists = recore.mongo.lookup_playbook(mongo_db, playbook, dpid)
 
         out.debug("Mongo query to get info on %s finished" % playbook)
 
         if playbook_exists:
             # Initialize state and include the dynamic items
-            id = str(recore.mongo.initialize_state(mongo_db, playbook, dynamic))
-            out.debug("State created for '%s' in mongo with id: %s" % (playbook, id))
+            id = str(recore.mongo.initialize_state(mongo_db, playbook, dpid, dynamic))
+            out.debug("State updated for '%s' in mongo with id: %s" % (playbook, id))
         else:
             out.error("Playbook %s does not exist in mongo" % playbook)
             id = None
+            recore.mongo.delete_state_document(mongo_db, str(dpid))
     except bson.errors.InvalidId:
         out.error("Invalid ObjectID given for lookup: %s" % str(playbook))
         id = None
-    except Exception, e:  # pragma: no cover
-        out.error("Unknown error while looking up playbook: %s" % str(e))
-        id = None
+    # except Exception, e:  # pragma: no cover
+    #     out.error("Unknown error while looking up playbook: %s" % str(e))
+    #     id = None
 
     body = {'id': id}
 

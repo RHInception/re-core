@@ -18,7 +18,7 @@ import pymongo
 import datetime
 import mock
 from contextlib import nested
-
+from bson.objectid import ObjectId
 from . import TestCase, unittest
 
 from recore import mongo
@@ -283,18 +283,18 @@ class TestMongo(TestCase):
         playbook = '555544443333222211110000'
 
         # With result
-        assert mongo.lookup_playbook(db, playbook) == {"data": "here"}
+        assert mongo.lookup_playbook(db, playbook, '000000000000000007654321') == {"data": "here"}
 
         # No result
         collection.find_one = mock.MagicMock(return_value=None)
-        assert mongo.lookup_playbook(db, playbook) is None
+        assert mongo.lookup_playbook(db, playbook, '000000000000000007654321') is None
 
         # Error result is {}
-        assert mongo.lookup_playbook({}, playbook) == {}
+        assert mongo.lookup_playbook({}, playbook, '000000000000000007654321') == {}
 
         # Invalid playbook id raises errors
         with self.assertRaises(bson.errors.InvalidId):
-            mongo.lookup_playbook(db, '6')
+            mongo.lookup_playbook(db, '6', '000000000000000007654321')
 
     @mock.patch('recore.contextfilter.get_logger_filter')
     def test_initialize_state(self, logger_filter):
@@ -303,7 +303,7 @@ class TestMongo(TestCase):
         """
         db = mock.MagicMock()
         collection = mock.MagicMock()
-        collection.insert = mock.MagicMock(return_value=12345)
+        collection.update = mock.MagicMock(return_value=12345)
         db.__getitem__.return_value = collection
         group = 'testgroup'
         user_id = 'justabro'
@@ -329,48 +329,59 @@ class TestMongo(TestCase):
                 filter.get_field = get_field
                 logger_filter.return_value = filter
 
-                mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
-                db['state'].insert.assert_called_once_with({
-                    'executed': [],
-                    'group': group,
-                    'user_id': user_id,
-                    'failed': False,
-                    'created': UTCNOW,
-                    'dynamic': {},
-                    'triggers': [],
-                    'active_sequence':
+                mongo.initialize_state(db, PLAYBOOK_ID, '000000000000000007654321', dynamic={})
+                db['state'].update.assert_called_once_with(
                     {
-                        'steps': [
-                                'bigip:OutOfRotation',
-                            {'misc:Echo': {'input': 'This is a test message'}},
-                            {'frob:Nicate': {'things': 'all the things'}}
-                        ],
-                        'completed_steps': [],
-                        'hosts': ['bar.ops.example.com'],
-                        'description': 'frobnicate these lil guys'
+                        '_id': ObjectId('000000000000000007654321')
                     },
-                    'ended': None,
-                    'active_step': None,
-                    'reply_to': None,
-                        'execution': [],
-                    'playbook_id': PLAYBOOK_ID
-                })
+                    {
+                        '$set': {
+                            'executed': [],
+                            'group': group,
+                            'user_id': user_id,
+                            'failed': False,
+                            'created': UTCNOW,
+                            'dynamic': {},
+                            'triggers': [],
+                            'active_sequence': {
+                                'steps': [
+                                    'bigip:OutOfRotation',
+                                    {'misc:Echo': {'input': 'This is a test message'}},
+                                    {'frob:Nicate': {'things': 'all the things'}}
+                                ],
+                                'completed_steps': [],
+                                'hosts': ['bar.ops.example.com'],
+                                'description': 'frobnicate these lil guys'
+                            },
+                            'ended': None,
+                            'active_step': None,
+                            'reply_to': None,
+                            'execution': [],
+                            'playbook_id': PLAYBOOK_ID
+                        }
+                    })
 
-    def test_initialize_state_with_error(self):
+    @mock.patch('recore.contextfilter.get_logger_filter')
+    def test_initialize_state_with_error(self, logger_filter):
         """
         Make sure that if mongo errors out we are notified with the
         proper exception
         """
         db = mock.MagicMock()
         collection = mock.MagicMock()
-        collection.insert = mock.MagicMock(
+        collection.update = mock.MagicMock(
             side_effect=pymongo.errors.PyMongoError('test error'))
         db.__getitem__.return_value = collection
         playbook = '555544443333222211110000'
 
+        set_field = mock.Mock(return_value=None)
+        filter = mock.Mock()
+        filter.set_field = set_field
+        logger_filter.return_value = filter
+
         # We should get a PyMongoError
         self.assertRaises(
-            pymongo.errors.PyMongoError, mongo.initialize_state, db, playbook)
+            pymongo.errors.PyMongoError, mongo.initialize_state, db, playbook, '000000000000000007654321')
 
     ##################################################################
     # Step triggers be here. yarrrrrrrr
@@ -382,7 +393,7 @@ class TestMongo(TestCase):
         recore.fsm.TRIGGERS = new_triggers()
         db = mock.MagicMock()
         collection = mock.MagicMock()
-        collection.insert = mock.MagicMock(return_value=12345)
+        collection.update = mock.MagicMock(return_value=12345)
         db.__getitem__.return_value = collection
         group = 'testgroup'
         user_id = 'justabro'
@@ -405,33 +416,36 @@ class TestMongo(TestCase):
             filter.get_field = get_field
             logger_filter.return_value = filter
 
-            mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
-            db['state'].insert.assert_called_once_with({
-                'executed': [],
-                'group': group,
-                'user_id': user_id,
-                'failed': False,
-                'created': UTCNOW,
-                'dynamic': {},
-                'triggers': new_triggers(),
-                'active_sequence':
+            mongo.initialize_state(db, PLAYBOOK_ID, '000000000000000007654321', dynamic={})
+            db['state'].update.assert_called_once_with(
+                {'_id': ObjectId('000000000000000007654321')},
                 {
-                    'steps': [
-                        {'sleep:seconds': {'seconds': 1}},
-                        'bigip:OutOfRotation',
-                        {'misc:Echo': {'input': 'This is a test message'}},
-                        {'frob:Nicate': {'things': 'all the things'}}
-                    ],
-                    'completed_steps': [],
-                    'hosts': ['bar.ops.example.com'],
-                    'description': 'frobnicate these lil guys'
-                },
-                'ended': None,
-                'active_step': None,
-                'reply_to': None,
-                'execution': [],
-                'playbook_id': PLAYBOOK_ID
-            })
+                    '$set': {
+                        'executed': [],
+                        'group': group,
+                        'user_id': user_id,
+                        'failed': False,
+                        'created': UTCNOW,
+                        'dynamic': {},
+                        'triggers': new_triggers(),
+                        'active_sequence':
+                        {
+                            'steps': [
+                                {'sleep:seconds': {'seconds': 1}},
+                                'bigip:OutOfRotation',
+                                {'misc:Echo': {'input': 'This is a test message'}},
+                                {'frob:Nicate': {'things': 'all the things'}}
+                            ],
+                            'completed_steps': [],
+                            'hosts': ['bar.ops.example.com'],
+                            'description': 'frobnicate these lil guys'
+                        },
+                        'ended': None,
+                        'active_step': None,
+                        'reply_to': None,
+                        'execution': [],
+                        'playbook_id': PLAYBOOK_ID
+                    }})
 
     @mock.patch('recore.contextfilter.get_logger_filter')
     def test_initialize_state_with_multiple_triggers(self, logger_filter):
@@ -441,7 +455,7 @@ class TestMongo(TestCase):
         recore.fsm.TRIGGERS = new_triggers_two_triggers()
         db = mock.MagicMock()
         collection = mock.MagicMock()
-        collection.insert = mock.MagicMock(return_value=12345)
+        collection.update = mock.MagicMock(return_value=12345)
         db.__getitem__.return_value = collection
         group = 'testgroup'
         user_id = 'justabro'
@@ -464,34 +478,38 @@ class TestMongo(TestCase):
             filter.get_field = get_field
             logger_filter.return_value = filter
 
-            mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
-            db['state'].insert.assert_called_once_with({
-                'executed': [],
-                'group': group,
-                'user_id': user_id,
-                'failed': False,
-                'created': UTCNOW,
-                'dynamic': {},
-                'triggers': new_triggers_two_triggers(),
-                'active_sequence':
+            mongo.initialize_state(db, PLAYBOOK_ID, '000000000000000007654321', dynamic={})
+            db['state'].update.assert_called_once_with(
+                {'_id': ObjectId('000000000000000007654321')},
                 {
-                    'steps': [
-                        {'sleep:seconds': {'seconds': 1}},
-                        'bigip:OutOfRotation',
-                        {'misc:Echo': {'input': 'This is a test message'}},
-                        {'sleep:seconds': {'seconds': 1}},
-                        {'frob:Nicate': {'things': 'all the things'}}
-                    ],
-                    'completed_steps': [],
-                    'hosts': ['bar.ops.example.com'],
-                    'description': 'frobnicate these lil guys'
-                },
-                'ended': None,
-                'active_step': None,
-                'reply_to': None,
-                'execution': [],
-                'playbook_id': PLAYBOOK_ID
-            })
+                    '$set': {
+                        'executed': [],
+                        'group': group,
+                        'user_id': user_id,
+                        'failed': False,
+                        'created': UTCNOW,
+                        'dynamic': {},
+                        'triggers': new_triggers_two_triggers(),
+                        'active_sequence':
+                        {
+                            'steps': [
+                                {'sleep:seconds': {'seconds': 1}},
+                                'bigip:OutOfRotation',
+                                {'misc:Echo': {'input': 'This is a test message'}},
+                                {'sleep:seconds': {'seconds': 1}},
+                                {'frob:Nicate': {'things': 'all the things'}}
+                            ],
+                            'completed_steps': [],
+                            'hosts': ['bar.ops.example.com'],
+                            'description': 'frobnicate these lil guys'
+                        },
+                        'ended': None,
+                        'active_step': None,
+                        'reply_to': None,
+                        'execution': [],
+                        'playbook_id': PLAYBOOK_ID
+                    }
+                })
 
     @mock.patch('recore.contextfilter.get_logger_filter')
     def test_initialize_state_with_triggers_not_loaded(self, logger_filter):
@@ -501,7 +519,7 @@ class TestMongo(TestCase):
         recore.fsm.TRIGGERS = new_triggers_not_loaded()
         db = mock.MagicMock()
         collection = mock.MagicMock()
-        collection.insert = mock.MagicMock(return_value=12345)
+        collection.update = mock.MagicMock(return_value=12345)
         db.__getitem__.return_value = collection
         group = 'testgroup'
         user_id = 'justabro'
@@ -524,32 +542,35 @@ class TestMongo(TestCase):
             filter.get_field = get_field
             logger_filter.return_value = filter
 
-            mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
-            db['state'].insert.assert_called_once_with({
-                'executed': [],
-                'group': group,
-                'user_id': user_id,
-                'failed': False,
-                'created': UTCNOW,
-                'dynamic': {},
-                'triggers': new_triggers_not_loaded(),
-                'active_sequence':
+            mongo.initialize_state(db, PLAYBOOK_ID, '000000000000000007654321', dynamic={})
+            db['state'].update.assert_called_once_with(
+                {'_id': ObjectId('000000000000000007654321')},
                 {
-                    'steps': [
-                        'bigip:OutOfRotation',
-                        {'misc:Echo': {'input': 'This is a test message'}},
-                        {'frob:Nicate': {'things': 'all the things'}}
-                    ],
-                    'completed_steps': [],
-                    'hosts': ['bar.ops.example.com'],
-                    'description': 'frobnicate these lil guys'
-                },
-                'ended': None,
-                'active_step': None,
-                'reply_to': None,
-                'execution': [],
-                'playbook_id': PLAYBOOK_ID
-            })
+                    '$set': {
+                        'executed': [],
+                        'group': group,
+                        'user_id': user_id,
+                        'failed': False,
+                        'created': UTCNOW,
+                        'dynamic': {},
+                        'triggers': new_triggers_not_loaded(),
+                        'active_sequence':
+                        {
+                            'steps': [
+                                'bigip:OutOfRotation',
+                                {'misc:Echo': {'input': 'This is a test message'}},
+                                {'frob:Nicate': {'things': 'all the things'}}
+                            ],
+                            'completed_steps': [],
+                            'hosts': ['bar.ops.example.com'],
+                            'description': 'frobnicate these lil guys'
+                        },
+                        'ended': None,
+                        'active_step': None,
+                        'reply_to': None,
+                        'execution': [],
+                        'playbook_id': PLAYBOOK_ID
+                    }})
 
     @mock.patch('recore.contextfilter.get_logger_filter')
     def test_initialize_state_with_one_compound_trigger(self, logger_filter):
@@ -559,7 +580,7 @@ class TestMongo(TestCase):
         recore.fsm.TRIGGERS = new_compound_triggers()
         db = mock.MagicMock()
         collection = mock.MagicMock()
-        collection.insert = mock.MagicMock(return_value=12345)
+        collection.update = mock.MagicMock(return_value=12345)
         db.__getitem__.return_value = collection
         group = 'testgroup'
         user_id = 'justabro'
@@ -582,33 +603,36 @@ class TestMongo(TestCase):
             filter.get_field = get_field
             logger_filter.return_value = filter
 
-            mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
-            db['state'].insert.assert_called_once_with({
-                'executed': [],
-                'group': group,
-                'user_id': user_id,
-                'failed': False,
-                'created': UTCNOW,
-                'dynamic': {},
-                'triggers': new_compound_triggers(),
-                'active_sequence':
+            mongo.initialize_state(db, PLAYBOOK_ID, '000000000000000007654321', dynamic={})
+            db['state'].update.assert_called_once_with(
+                {'_id': ObjectId('000000000000000007654321')},
                 {
-                    'steps': [
-                        {'sleep:seconds': {'seconds': 1}},
-                        'bigip:OutOfRotation',
-                        {'misc:Echo': {'input': 'This is a test message'}},
-                        {'frob:Nicate': {'things': 'all the things'}}
-                    ],
-                    'completed_steps': [],
-                    'hosts': ['bar.ops.example.com'],
-                    'description': 'frobnicate these lil guys'
-                },
-                'ended': None,
-                'active_step': None,
-                'reply_to': None,
-                'execution': [],
-                'playbook_id': PLAYBOOK_ID
-            })
+                    '$set': {
+                        'executed': [],
+                        'group': group,
+                        'user_id': user_id,
+                        'failed': False,
+                        'created': UTCNOW,
+                        'dynamic': {},
+                        'triggers': new_compound_triggers(),
+                        'active_sequence':
+                        {
+                            'steps': [
+                                {'sleep:seconds': {'seconds': 1}},
+                                'bigip:OutOfRotation',
+                                {'misc:Echo': {'input': 'This is a test message'}},
+                                {'frob:Nicate': {'things': 'all the things'}}
+                            ],
+                            'completed_steps': [],
+                            'hosts': ['bar.ops.example.com'],
+                            'description': 'frobnicate these lil guys'
+                        },
+                        'ended': None,
+                        'active_step': None,
+                        'reply_to': None,
+                        'execution': [],
+                        'playbook_id': PLAYBOOK_ID
+                    }})
 
     @mock.patch('recore.contextfilter.get_logger_filter')
     def test_initialize_state_with_one_compound_trigger_no_match_subcommand(self, logger_filter):
@@ -618,7 +642,7 @@ class TestMongo(TestCase):
         recore.fsm.TRIGGERS = new_compound_triggers_no_match_subcommand()
         db = mock.MagicMock()
         collection = mock.MagicMock()
-        collection.insert = mock.MagicMock(return_value=12345)
+        collection.update = mock.MagicMock(return_value=12345)
         db.__getitem__.return_value = collection
         group = 'testgroup'
         user_id = 'justabro'
@@ -641,32 +665,35 @@ class TestMongo(TestCase):
             filter.get_field = get_field
             logger_filter.return_value = filter
 
-            mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
-            db['state'].insert.assert_called_once_with({
-                'executed': [],
-                'group': group,
-                'user_id': user_id,
-                'failed': False,
-                'created': UTCNOW,
-                'dynamic': {},
-                'triggers': new_compound_triggers_no_match_subcommand(),
-                'active_sequence':
+            mongo.initialize_state(db, PLAYBOOK_ID, '000000000000000007654321', dynamic={})
+            db['state'].update.assert_called_once_with(
+                {'_id': ObjectId('000000000000000007654321')},
                 {
-                    'steps': [
-                        'bigip:OutOfRotation',
-                        {'misc:Echo': {'input': 'This is a test message'}},
-                        {'frob:Nicate': {'things': 'all the things'}}
-                    ],
-                    'completed_steps': [],
-                    'hosts': ['bar.ops.example.com'],
-                    'description': 'frobnicate these lil guys'
-                },
-                'ended': None,
-                'active_step': None,
-                'reply_to': None,
-                'execution': [],
-                'playbook_id': PLAYBOOK_ID
-            })
+                    '$set': {
+                        'executed': [],
+                        'group': group,
+                        'user_id': user_id,
+                        'failed': False,
+                        'created': UTCNOW,
+                        'dynamic': {},
+                        'triggers': new_compound_triggers_no_match_subcommand(),
+                        'active_sequence':
+                        {
+                            'steps': [
+                                'bigip:OutOfRotation',
+                                {'misc:Echo': {'input': 'This is a test message'}},
+                                {'frob:Nicate': {'things': 'all the things'}}
+                            ],
+                            'completed_steps': [],
+                            'hosts': ['bar.ops.example.com'],
+                            'description': 'frobnicate these lil guys'
+                        },
+                        'ended': None,
+                        'active_step': None,
+                        'reply_to': None,
+                        'execution': [],
+                        'playbook_id': PLAYBOOK_ID
+                    }})
 
     @mock.patch('recore.contextfilter.get_logger_filter')
     def test_initialize_state_with_one_compound_trigger_no_match_command(self, logger_filter):
@@ -676,7 +703,7 @@ class TestMongo(TestCase):
         recore.fsm.TRIGGERS = new_compound_triggers_no_match_command()
         db = mock.MagicMock()
         collection = mock.MagicMock()
-        collection.insert = mock.MagicMock(return_value=12345)
+        collection.update = mock.MagicMock(return_value=12345)
         db.__getitem__.return_value = collection
         group = 'testgroup'
         user_id = 'justabro'
@@ -699,32 +726,35 @@ class TestMongo(TestCase):
             filter.get_field = get_field
             logger_filter.return_value = filter
 
-            mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
-            db['state'].insert.assert_called_once_with({
-                'executed': [],
-                'group': group,
-                'user_id': user_id,
-                'failed': False,
-                'created': UTCNOW,
-                'dynamic': {},
-                'triggers': new_compound_triggers_no_match_command(),
-                'active_sequence':
+            mongo.initialize_state(db, PLAYBOOK_ID, '000000000000000007654321', dynamic={})
+            db['state'].update.assert_called_once_with(
+                {'_id': ObjectId('000000000000000007654321')},
                 {
-                    'steps': [
-                        'bigip:OutOfRotation',
-                        {'misc:Echo': {'input': 'This is a test message'}},
-                        {'frob:Nicate': {'things': 'all the things'}}
-                    ],
-                    'completed_steps': [],
-                    'hosts': ['bar.ops.example.com'],
-                    'description': 'frobnicate these lil guys'
-                },
-                'ended': None,
-                'active_step': None,
-                'reply_to': None,
-                'execution': [],
-                'playbook_id': PLAYBOOK_ID
-            })
+                    '$set': {
+                        'executed': [],
+                        'group': group,
+                        'user_id': user_id,
+                        'failed': False,
+                        'created': UTCNOW,
+                        'dynamic': {},
+                        'triggers': new_compound_triggers_no_match_command(),
+                        'active_sequence':
+                        {
+                            'steps': [
+                                'bigip:OutOfRotation',
+                                {'misc:Echo': {'input': 'This is a test message'}},
+                                {'frob:Nicate': {'things': 'all the things'}}
+                            ],
+                            'completed_steps': [],
+                            'hosts': ['bar.ops.example.com'],
+                            'description': 'frobnicate these lil guys'
+                        },
+                        'ended': None,
+                        'active_step': None,
+                        'reply_to': None,
+                        'execution': [],
+                        'playbook_id': PLAYBOOK_ID
+                    }})
 
     @mock.patch('recore.contextfilter.get_logger_filter')
     def test_initialize_state_with_multiple_triggers_compound_match(self, logger_filter):
@@ -734,7 +764,7 @@ class TestMongo(TestCase):
         recore.fsm.TRIGGERS = new_triggers_two_triggers_compound_match()
         db = mock.MagicMock()
         collection = mock.MagicMock()
-        collection.insert = mock.MagicMock(return_value=12345)
+        collection.update = mock.MagicMock(return_value=12345)
         db.__getitem__.return_value = collection
         group = 'testgroup'
         user_id = 'justabro'
@@ -757,34 +787,37 @@ class TestMongo(TestCase):
             filter.get_field = get_field
             logger_filter.return_value = filter
 
-            mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
-            db['state'].insert.assert_called_once_with({
-                'executed': [],
-                'group': group,
-                'user_id': user_id,
-                'failed': False,
-                'created': UTCNOW,
-                'dynamic': {},
-                'triggers': new_triggers_two_triggers_compound_match(),
-                'active_sequence':
+            mongo.initialize_state(db, PLAYBOOK_ID, '000000000000000007654321', dynamic={})
+            db['state'].update.assert_called_once_with(
+                {'_id': ObjectId('000000000000000007654321')},
                 {
-                    'steps': [
-                        {'sleep:seconds': {'seconds': 1}},
-                        'bigip:OutOfRotation',
-                        {'misc:Echo': {'input': 'This is a test message'}},
-                        {'sleep:seconds': {'seconds': 1}},
-                        {'frob:Nicate': {'things': 'all the things'}}
-                    ],
-                    'completed_steps': [],
-                    'hosts': ['bar.ops.example.com'],
-                    'description': 'frobnicate these lil guys'
-                },
-                'ended': None,
-                'active_step': None,
-                'reply_to': None,
-                'execution': [],
-                'playbook_id': PLAYBOOK_ID
-            })
+                    '$set': {
+                        'executed': [],
+                        'group': group,
+                        'user_id': user_id,
+                        'failed': False,
+                        'created': UTCNOW,
+                        'dynamic': {},
+                        'triggers': new_triggers_two_triggers_compound_match(),
+                        'active_sequence':
+                        {
+                            'steps': [
+                                {'sleep:seconds': {'seconds': 1}},
+                                'bigip:OutOfRotation',
+                                {'misc:Echo': {'input': 'This is a test message'}},
+                                {'sleep:seconds': {'seconds': 1}},
+                                {'frob:Nicate': {'things': 'all the things'}}
+                            ],
+                            'completed_steps': [],
+                            'hosts': ['bar.ops.example.com'],
+                            'description': 'frobnicate these lil guys'
+                        },
+                        'ended': None,
+                        'active_step': None,
+                        'reply_to': None,
+                        'execution': [],
+                        'playbook_id': PLAYBOOK_ID
+                    }})
 
     @mock.patch('recore.contextfilter.get_logger_filter')
     def test_initialize_state_with_multiple_triggers_compound_no_match(self, logger_filter):
@@ -794,7 +827,7 @@ class TestMongo(TestCase):
         recore.fsm.TRIGGERS = new_triggers_two_triggers_compound_no_match()
         db = mock.MagicMock()
         collection = mock.MagicMock()
-        collection.insert = mock.MagicMock(return_value=12345)
+        collection.update = mock.MagicMock(return_value=12345)
         db.__getitem__.return_value = collection
         group = 'testgroup'
         user_id = 'justabro'
@@ -817,33 +850,36 @@ class TestMongo(TestCase):
             filter.get_field = get_field
             logger_filter.return_value = filter
 
-            mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
-            db['state'].insert.assert_called_once_with({
-                'executed': [],
-                'group': group,
-                'user_id': user_id,
-                'failed': False,
-                'created': UTCNOW,
-                'dynamic': {},
-                'triggers': new_triggers_two_triggers_compound_no_match(),
-                'active_sequence':
+            mongo.initialize_state(db, PLAYBOOK_ID, '000000000000000007654321', dynamic={})
+            db['state'].update.assert_called_once_with(
+                {'_id': ObjectId('000000000000000007654321')},
                 {
-                    'steps': [
-                        {'sleep:seconds': {'seconds': 1}},
-                        'bigip:OutOfRotation',
-                        {'misc:Echo': {'input': 'This is a test message'}},
-                        {'frob:Nicate': {'things': 'all the things'}}
-                    ],
-                    'completed_steps': [],
-                    'hosts': ['bar.ops.example.com'],
-                    'description': 'frobnicate these lil guys'
-                },
-                'ended': None,
-                'active_step': None,
-                'reply_to': None,
-                'execution': [],
-                'playbook_id': PLAYBOOK_ID
-            })
+                    '$set': {
+                        'executed': [],
+                        'group': group,
+                        'user_id': user_id,
+                        'failed': False,
+                        'created': UTCNOW,
+                        'dynamic': {},
+                        'triggers': new_triggers_two_triggers_compound_no_match(),
+                        'active_sequence':
+                        {
+                            'steps': [
+                                {'sleep:seconds': {'seconds': 1}},
+                                'bigip:OutOfRotation',
+                                {'misc:Echo': {'input': 'This is a test message'}},
+                                {'frob:Nicate': {'things': 'all the things'}}
+                            ],
+                            'completed_steps': [],
+                            'hosts': ['bar.ops.example.com'],
+                            'description': 'frobnicate these lil guys'
+                        },
+                        'ended': None,
+                        'active_step': None,
+                        'reply_to': None,
+                        'execution': [],
+                        'playbook_id': PLAYBOOK_ID
+                    }})
 
     @mock.patch('recore.contextfilter.get_logger_filter')
     def test_initialize_state_with_two_recursive_triggers(self, logger_filter):
@@ -853,7 +889,7 @@ class TestMongo(TestCase):
         recore.fsm.TRIGGERS = new_triggers_recursive()
         db = mock.MagicMock()
         collection = mock.MagicMock()
-        collection.insert = mock.MagicMock(return_value=12345)
+        collection.update = mock.MagicMock(return_value=12345)
         db.__getitem__.return_value = collection
         group = 'testgroup'
         user_id = 'justabro'
@@ -876,31 +912,34 @@ class TestMongo(TestCase):
             filter.get_field = get_field
             logger_filter.return_value = filter
 
-            mongo.initialize_state(db, PLAYBOOK_ID, dynamic={})
-            db['state'].insert.assert_called_once_with({
-                'executed': [],
-                'group': group,
-                'user_id': user_id,
-                'failed': False,
-                'created': UTCNOW,
-                'dynamic': {},
-                'triggers': new_triggers_recursive(),
-                'active_sequence':
+            mongo.initialize_state(db, PLAYBOOK_ID, '000000000000000007654321', dynamic={})
+            db['state'].update.assert_called_once_with(
+                {'_id': ObjectId('000000000000000007654321')},
                 {
-                    'steps': [
-                        'noop:Whatever',
-                        {'sleep:seconds': {'seconds': 1}},
-                        'bigip:OutOfRotation',
-                        {'misc:Echo': {'input': 'This is a test message'}},
-                        {'frob:Nicate': {'things': 'all the things'}}
-                    ],
-                    'completed_steps': [],
-                    'hosts': ['bar.ops.example.com'],
-                    'description': 'frobnicate these lil guys'
-                },
-                'ended': None,
-                'active_step': None,
-                'reply_to': None,
-                'execution': [],
-                'playbook_id': PLAYBOOK_ID
-            })
+                    '$set': {
+                        'executed': [],
+                        'group': group,
+                        'user_id': user_id,
+                        'failed': False,
+                        'created': UTCNOW,
+                        'dynamic': {},
+                        'triggers': new_triggers_recursive(),
+                        'active_sequence':
+                        {
+                            'steps': [
+                                'noop:Whatever',
+                                {'sleep:seconds': {'seconds': 1}},
+                                'bigip:OutOfRotation',
+                                {'misc:Echo': {'input': 'This is a test message'}},
+                                {'frob:Nicate': {'things': 'all the things'}}
+                            ],
+                            'completed_steps': [],
+                            'hosts': ['bar.ops.example.com'],
+                            'description': 'frobnicate these lil guys'
+                        },
+                        'ended': None,
+                        'active_step': None,
+                        'reply_to': None,
+                        'execution': [],
+                        'playbook_id': PLAYBOOK_ID
+                    }})

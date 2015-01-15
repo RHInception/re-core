@@ -170,7 +170,7 @@ class TestAMQP(TestCase):
         Verify when topic job.create is received the FSM handles it properly
         """
         group = 'testgroup'
-        release_id = 12345
+        release_id = '000000000000000007654321'
         playbook_id = "555544443333222211110000"
         body = '{"group": "%s", "dynamic": {}, "playbook_id": "%s"}' % (
             group, playbook_id)
@@ -184,12 +184,15 @@ class TestAMQP(TestCase):
                     amqp.recore.job.create.recore.mongo.lookup_playbook = (
                         mock.MagicMock(return_value={''}))
 
+                    amqp.recore.mongo.create_state_document = (
+                        mock.MagicMock(return_value="000000000000000007654321"))
+
                     # Make the call
                     amqp.receive(channel, method, PROPERTIES, body)
 
                     # Verify the items which should have triggered
                     amqp.recore.job.create.release.assert_called_once_with(
-                        channel, playbook_id, REPLY_TO, {})
+                        channel, playbook_id, REPLY_TO, {}, "000000000000000007654321")
                     # Verify a new thread of the FSM is started for
                     # this one specific release
                     amqp.recore.fsm.FSM.call_count == 1

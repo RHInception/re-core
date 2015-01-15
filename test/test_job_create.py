@@ -44,7 +44,7 @@ class TestJobCreate(TestCase):
                 return_value=1234567890)
 
             assert create.release(
-                channel, 'test', 'replyto', {}) == "1234567890"
+                channel, 'test', 'replyto', {}, '000000000000000007654321') == "1234567890"
             channel.basic_publish.assert_called_with(
                 exchange='',
                 routing_key='replyto',
@@ -59,7 +59,7 @@ class TestJobCreate(TestCase):
             create.recore.mongo.lookup_playbook = mock.MagicMock(
                 return_value={})
 
-            assert create.release(channel, 'test', 'replyto', {}) is None
+            assert create.release(channel, 'test', 'replyto', {}, '000000000000000007654321') is None
 
     def test_invalid_pbid(self):
         """
@@ -70,5 +70,5 @@ class TestJobCreate(TestCase):
             create.recore.mongo.lookup_playbook = mock.MagicMock(
                 side_effect=bson.errors.InvalidId)
 
-            assert create.release(channel, '6', 'replyto', {}) is None
+            assert create.release(channel, '6', 'replyto', {}, '000000000000000007654321') is None
             self.assertEqual(channel.basic_publish.call_args_list[0][1]['body'], '{"id": null}')
