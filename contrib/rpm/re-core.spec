@@ -12,7 +12,7 @@
 Name: %{?scl_prefix}re-core
 Summary: FSM of the Inception Release Engine
 Version: 0.0.9
-Release: 2%{?dist}
+Release: 3%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -69,6 +69,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Fri Jan 16 2015 Tim Bielawa <tbielawa@redhat.com> - 0.0.9-3
+- Fix deletion logging statement to print actual deployment id
+
 * Fri Jan 16 2015 Tim Bielawa <tbielawa@redhat.com> - 0.0.9-2
 - Fix missing out= definition in delete_state_document
 

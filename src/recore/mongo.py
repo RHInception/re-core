@@ -192,7 +192,7 @@ def delete_state_document(d, dpid):
     out = logging.getLogger(logname)
     try:
         d['state'].remove({'_id': ObjectId(dpid)})
-        out.debug("Deleted state record with id: %s" % str(id))
+        out.debug("Deleted state record with id: %s" % str(dpid))
         return True
     except pymongo.errors.PyMongoError, pmex:
         out.error(
