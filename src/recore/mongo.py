@@ -188,6 +188,8 @@ def delete_state_document(d, dpid):
     """
     Delete the state document ``dpid`` from database ``d``
     """
+    logname = 'recore.deployment.' + str(dpid)
+    out = logging.getLogger(logname)
     try:
         d['state'].remove({'_id': ObjectId(dpid)})
         out.debug("Deleted state record with id: %s" % str(id))
