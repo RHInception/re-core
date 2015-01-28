@@ -221,7 +221,9 @@ in the DB.
                 'failed_step': failed_step,
                 'failed_sequence': failed_sequence,
                 'skipped_sequences': skipped_sequences,
-                'execution': self.execution
+                'execution': self.execution,
+                'active_sequence': self.active_sequence,
+                'active_step': self.active_step
             }
         }
 
@@ -286,6 +288,7 @@ in the DB.
         try:
             # Use the .get() so it's easy to continue if a step failed
             self.active_step = self.active_sequence.get('steps', []).pop(0)
+
         except IndexError:
             # We have exhaused this execution sequence of all release
             # steps. Time to move on to the next sequence.

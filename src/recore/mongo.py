@@ -156,7 +156,7 @@ def initialize_state(d, pbid, dpid, dynamic={}):
                 '$set': state0
             }
         )
-        out.debug("Updated state record with id: %s" % str(id))
+        out.debug("Updated state record with id: %s" % str(dpid))
         out.debug("New state record: %s" % state0)
     except pymongo.errors.PyMongoError, pmex:
         out.error(

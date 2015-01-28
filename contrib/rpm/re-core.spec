@@ -11,8 +11,8 @@
 
 Name: %{?scl_prefix}re-core
 Summary: FSM of the Inception Release Engine
-Version: 0.0.9
-Release: 3%{?dist}
+Version: 0.1.0
+Release: 1%{?dist}
 
 Group: Applications/System
 License: AGPLv3
@@ -69,6 +69,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Wed Jan 28 2015 Tim Bielawa <tbielawa@redhat.com> - 0.1.0-1
+- Finally fix issue with releases not failing when steps fail
+
 * Fri Jan 16 2015 Tim Bielawa <tbielawa@redhat.com> - 0.0.9-3
 - Fix deletion logging statement to print actual deployment id
 

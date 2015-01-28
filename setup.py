@@ -28,7 +28,7 @@ except ImportError:
 
 setup(
     name='re-core',
-    version='0.0.9',
+    version='0.1.0',
     description='',
     author='See AUTHORS file',
     author_email='inception@redhat.com',
