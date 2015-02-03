@@ -11,7 +11,7 @@
 
 Name: %{?scl_prefix}re-core
 Summary: FSM of the Inception Release Engine
-Version: 0.1.0
+Version: 0.1.1
 Release: 1%{?dist}
 
 Group: Applications/System
@@ -69,6 +69,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc README.md LICENSE AUTHORS examples/settings-example.json
 
 %changelog
+* Tue Feb  3 2015 Tim Bielawa <tbielawa@redhat.com> - 0.1.1-1
+- Fix error in begin/end timestamp for state records. All are UTCNOW
+
 * Wed Jan 28 2015 Tim Bielawa <tbielawa@redhat.com> - 0.1.0-1
 - Finally fix issue with releases not failing when steps fail
 

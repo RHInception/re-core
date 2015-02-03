@@ -334,7 +334,8 @@ class TestFsm(TestCase):
                 us):
             with mock.patch('recore.fsm.dt') as (
                     dt):
-                dt.now.return_value = UTCNOW
+                dt.utcnow.return_value = UTCNOW
+
                 with mock.patch('recore.amqp.CONF') as notif_conf:
                     notif_conf = NOTIFICATION_CONF
                     set_field = mock.MagicMock()
@@ -375,7 +376,7 @@ class TestFsm(TestCase):
                     dt):
                 with mock.patch('recore.amqp.CONF') as notif_conf:
                     notif_conf = NOTIFICATION_CONF
-                    dt.now.return_value = UTCNOW
+                    dt.utcnow.return_value = UTCNOW
                     set_field = mock.MagicMock()
                     filter = mock.MagicMock(return_value=set_field)
                     f.filter = filter

@@ -493,7 +493,7 @@ Returns `None` if no action was required. Else, returns `True`
 
         _update_state = {
             '$set': {
-                'ended': dt.now(),
+                'ended': dt.utcnow(),
                 'failed': self.failed
             }
         }
